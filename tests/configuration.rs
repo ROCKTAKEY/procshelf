@@ -1,0 +1,61 @@
+use procshelf::configuration::Config;
+use std::{path::Path, time::Duration};
+
+#[test]
+fn manual_by_default_loopback_and_relative_paths_resolved_from_config() {
+    let config = Config::parse(
+        "[processes.api]\nprogram = './bin/api'\n",
+        Path::new("/project"),
+    )
+    .unwrap();
+    assert_eq!(config.listen.to_string(), "127.0.0.1:8787");
+    let api = &config.processes["api"];
+    assert!(!api.autostart());
+    assert_eq!(api.name(), "api");
+    assert_eq!(api.program(), Path::new("/project/bin/api"));
+    assert_eq!(api.cwd(), Path::new("/project"));
+    assert_eq!(api.stop_timeout(), Duration::from_secs(10));
+}
+
+#[test]
+fn explicit_vpn_address_and_autostart_are_preserved() {
+    let config = Config::parse(
+        r#"
+[web]
+listen = "100.64.0.4:8787"
+[processes.api]
+program = "/bin/sh"
+autostart = true
+args = ["-c", "echo hello"]
+cwd = "work"
+stop_timeout_seconds = 2
+[processes.api.env]
+MODE = "development"
+"#,
+        Path::new("/project"),
+    )
+    .unwrap();
+    assert_eq!(config.listen.to_string(), "100.64.0.4:8787");
+    let api = &config.processes["api"];
+    assert!(api.autostart());
+    assert_eq!(api.cwd(), Path::new("/project/work"));
+    assert_eq!(api.env()["MODE"], "development");
+}
+
+#[test]
+fn rejects_invalid_inputs_and_misspelled_fields_before_apply() {
+    for input in [
+        "[processes.api]\nprogram = ''",
+        "[processes.api]\nprogram = '/bin/sh'\nauto_start = true",
+        "[processes.api]\nprogram = '/bin/sh'\nstop_timeout_seconds = -1",
+        "[processes.'bad/id']\nprogram = '/bin/sh'",
+        "[web]\nlisten = 'not-an-address'",
+        "[web]\nlisten = '0.0.0.0:8787'",
+        "[processes.api]\nprogram = '/bin/sh'\n[processes.api.env]\n'A=B' = 'x'",
+    ] {
+        assert!(
+            Config::parse(input, Path::new("/project")).is_err(),
+            "{input}"
+        );
+    }
+}
