@@ -67,3 +67,5 @@ mod tests {
         assert_eq!(snapshot.entries.last().unwrap().seq, 300);
     }
 }
+
+pub(crate) mod text;

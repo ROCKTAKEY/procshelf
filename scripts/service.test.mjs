@@ -95,3 +95,13 @@ test('a crashed manager retains its configuration lease until supervisors finish
   assert.match(duplicate.diagnostics, /already managed/);
   await eventually(async () => {try {await access(`/proc/${pid}`);return false;}catch{return true;}});
 });
+
+test('high-volume output stays bounded and does not prevent stopping', {timeout:15000}, async t => {
+  const f = await fixture(t, `[processes.api]\nprogram="/bin/sh"\nargs=["-c", "yes output"]\nautostart=true\nstop_timeout_seconds=0\n`);
+  const logs = () => fetch(`${f.base}/api/processes/api/logs`).then(r=>r.json());
+  await eventually(async () => (await logs()).discarded > 0);
+  const snapshot = await logs();
+  assert.ok(snapshot.entries.reduce((sum,e)=>sum+Buffer.byteLength(e.text),0) <= 512*1024);
+  assert.equal((await f.act('stop')).status,202);
+  await eventually(async () => (await f.state()).processes[0].state === 'exited');
+});

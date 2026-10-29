@@ -102,3 +102,28 @@ fn stopping_escalates_when_term_is_ignored() {
     }
     wait(&mut child);
 }
+
+#[test]
+fn natural_leader_exit_also_reaps_remaining_children() {
+    let (mut child, mut reader) = start("sleep 60 & echo $!; exit 0");
+    assert_eq!(next(&mut reader)["type"], "started");
+    let mut grandchild = None;
+    loop {
+        let event = next(&mut reader);
+        if event["type"] == "output" {
+            grandchild = Some(
+                event["text"]
+                    .as_str()
+                    .unwrap()
+                    .trim()
+                    .parse::<u32>()
+                    .unwrap(),
+            );
+        }
+        if event["type"] == "finished" {
+            break;
+        }
+    }
+    wait(&mut child);
+    assert!(!Path::new(&format!("/proc/{}", grandchild.unwrap())).exists());
+}

@@ -115,22 +115,25 @@ async fn read_output(
     dropped: Arc<AtomicU64>,
 ) {
     let mut buf = [0; 4096];
+    let mut decoder = crate::logs::text::OutputDecoder::default();
     loop {
-        match input.read(&mut buf).await {
-            Ok(0) | Err(_) => break,
-            Ok(n) => {
-                let event = Event::Output {
-                    stream: stream.into(),
-                    text: String::from_utf8_lossy(&buf[..n]).into_owned(),
-                };
-                match tx.try_send(event) {
-                    Ok(()) => {}
-                    Err(mpsc::error::TrySendError::Full(_)) => {
-                        dropped.fetch_add(1, Ordering::Relaxed);
-                    }
-                    Err(mpsc::error::TrySendError::Closed(_)) => break,
+        let n = input.read(&mut buf).await.unwrap_or(0);
+        let text = decoder.decode(&buf[..n], n == 0);
+        if !text.is_empty() {
+            let event = Event::Output {
+                stream: stream.into(),
+                text,
+            };
+            match tx.try_send(event) {
+                Ok(()) => {}
+                Err(mpsc::error::TrySendError::Full(_)) => {
+                    dropped.fetch_add(1, Ordering::Relaxed);
                 }
+                Err(mpsc::error::TrySendError::Closed(_)) => break,
             }
+        }
+        if n == 0 {
+            break;
         }
     }
 }
