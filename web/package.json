@@ -1,0 +1,22 @@
+{
+  "name": "procshelf-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit && prettier --check src index.html vite.config.ts",
+    "format": "prettier --write src index.html vite.config.ts",
+    "test": "node --test src/*.test.ts"
+  },
+  "dependencies": {
+    "preact": "11.1.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}
