@@ -61,7 +61,11 @@ async fn run() -> Result<(), String> {
         .and_then(|mut f| f.read_exact(&mut bytes))
         .map_err(|e| format!("cannot create session token: {e}"))?;
     let token = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
-    let manager = Manager::new(config, std::env::current_exe().map_err(|e| e.to_string())?);
+    let manager = Manager::with_lease(
+        config,
+        std::env::current_exe().map_err(|e| e.to_string())?,
+        Some(_lock.try_clone().map_err(|e| e.to_string())?),
+    );
     let _watch = match ConfigWatch::start(path, manager.clone(), source) {
         Ok(watch) => watch,
         Err(error) => {

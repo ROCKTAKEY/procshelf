@@ -136,6 +136,25 @@ async fn read_output(
 }
 
 pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
+    // The lease belongs to the supervisor, never to the user's command. CLOEXEC prevents
+    // a daemonized command outside our supported group from retaining the config lock.
+    let _lease = if let Some(value) = std::env::args().nth(2) {
+        use std::os::fd::FromRawFd;
+        let fd: i32 = value.parse()?;
+        // SAFETY: validate the inherited descriptor before taking ownership; it must not
+        // alias standard I/O. The parent passes this descriptor only to this internal mode.
+        if fd < 3 || unsafe { nix::libc::fcntl(fd, nix::libc::F_GETFD) } == -1 {
+            return Err("invalid inherited lease descriptor".into());
+        }
+        let file = unsafe { std::fs::File::from_raw_fd(fd) };
+        nix::fcntl::fcntl(
+            &file,
+            nix::fcntl::FcntlArg::F_SETFD(nix::fcntl::FdFlag::FD_CLOEXEC),
+        )?;
+        Some(file)
+    } else {
+        None
+    };
     set_child_subreaper(true)?;
     let mut input = BufReader::new(tokio::net::unix::pipe::Receiver::from_owned_fd(
         nix::unistd::dup(io::stdin())?,

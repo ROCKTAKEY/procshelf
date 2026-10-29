@@ -5,8 +5,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap, net::SocketAddr, path::PathBuf, process::Stdio, sync::Arc,
-    time::Duration,
+    collections::BTreeMap, fs::File, net::SocketAddr, os::fd::AsRawFd, path::PathBuf,
+    process::Stdio, sync::Arc, time::Duration,
 };
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -127,6 +127,7 @@ impl Entry {
 struct Core {
     entries: BTreeMap<String, Entry>,
     executable: PathBuf,
+    lease: Option<File>,
     events: mpsc::Sender<RunEvent>,
     changes: watch::Sender<u64>,
     revision: u64,
@@ -204,7 +205,14 @@ impl Core {
         entry.last_spec = spec.clone();
         entry.outcome = None;
         entry.failed = false;
-        match launch(&self.executable, id.into(), run, &spec, self.events.clone()) {
+        match launch(
+            &self.executable,
+            self.lease.as_ref(),
+            id.into(),
+            run,
+            &spec,
+            self.events.clone(),
+        ) {
             Ok(control) => {
                 entry.execution = Execution::Active(ActiveRun {
                     id: run,
@@ -332,11 +340,15 @@ impl Core {
 }
 impl Manager {
     pub fn new(config: Config, executable: PathBuf) -> Self {
+        Self::with_lease(config, executable, None)
+    }
+    pub fn with_lease(config: Config, executable: PathBuf, lease: Option<File>) -> Self {
         let (events, mut incoming) = mpsc::channel(128);
         let (changes, receiver) = watch::channel(0);
         let mut core = Core {
             entries: BTreeMap::new(),
             executable,
+            lease,
             events,
             changes,
             revision: 0,
@@ -430,19 +442,35 @@ impl Manager {
 }
 fn launch(
     executable: &PathBuf,
+    lease: Option<&File>,
     id: String,
     run: u64,
     spec: &ProcessSpec,
     events: mpsc::Sender<RunEvent>,
 ) -> Result<mpsc::Sender<&'static str>, String> {
-    let mut child = Command::new(executable)
+    let mut command = Command::new(executable);
+    command
         .arg("--supervise")
         .process_group(0)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .map_err(|e| e.to_string())?;
+        .stderr(Stdio::inherit());
+    if let Some(lease) = lease {
+        let fd = lease.as_raw_fd();
+        command.arg(fd.to_string());
+        // SAFETY: the borrowed lease remains open through spawn. Only the async-signal-safe
+        // fcntl runs after fork; changing flags in the child does not alter the parent's flags.
+        // The inherited open file description keeps flock held if the manager crashes.
+        unsafe {
+            command.pre_exec(move || {
+                if nix::libc::fcntl(fd, nix::libc::F_SETFD, 0) == -1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+    }
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
     let mut input = child.stdin.take().unwrap();
     let mut output = BufReader::new(child.stdout.take().unwrap()).lines();
     let mut initial = serde_json::to_vec(spec).map_err(|e| e.to_string())?;
