@@ -17,6 +17,13 @@ pub struct ProcessSpec {
     pub(crate) stop_timeout: Duration,
 }
 impl ProcessSpec {
+    pub(crate) fn execution_eq(&self, other: &Self) -> bool {
+        self.program == other.program
+            && self.args == other.args
+            && self.cwd == other.cwd
+            && self.env == other.env
+            && self.stop_timeout == other.stop_timeout
+    }
     pub fn name(&self) -> &str {
         &self.name
     }
