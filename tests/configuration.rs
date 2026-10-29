@@ -59,3 +59,11 @@ fn rejects_invalid_inputs_and_misspelled_fields_before_apply() {
         );
     }
 }
+
+#[test]
+fn supervisor_wire_format_preserves_validation() {
+    let config = Config::parse("[processes.api]\nprogram='/bin/sh'", Path::new("/tmp")).unwrap();
+    let mut wire = serde_json::to_value(&config.processes["api"]).unwrap();
+    wire["program"] = serde_json::Value::String(String::new());
+    assert!(serde_json::from_value::<procshelf::configuration::ProcessSpec>(wire).is_err());
+}

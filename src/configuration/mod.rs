@@ -7,6 +7,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(into = "RawProcess", try_from = "RawProcess")]
 pub struct ProcessSpec {
     pub(crate) name: String,
     pub(crate) program: PathBuf,
@@ -71,7 +72,7 @@ impl Default for Web {
         }
     }
 }
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawProcess {
     name: Option<String>,
@@ -85,6 +86,59 @@ struct RawProcess {
     autostart: bool,
     stop_timeout_seconds: Option<u64>,
 }
+impl RawProcess {
+    fn resolve(self, id: &str, base: &Path) -> Result<ProcessSpec, String> {
+        let name = self.name.unwrap_or_else(|| id.into());
+        let timeout = self.stop_timeout_seconds.unwrap_or(10);
+        if !base.is_absolute()
+            || name.trim().is_empty()
+            || self.program.trim().is_empty()
+            || timeout > 3600
+            || self.program.contains('\0')
+            || self.args.iter().any(|a| a.contains('\0'))
+            || self
+                .cwd
+                .as_ref()
+                .is_some_and(|p| p.as_os_str().as_encoded_bytes().contains(&0))
+            || self
+                .env
+                .iter()
+                .any(|(k, v)| k.is_empty() || k.contains(['=', '\0']) || v.contains('\0'))
+        {
+            return Err(format!("invalid process specification for {id}"));
+        }
+        let resolve = |p: &Path| -> PathBuf { base.join(p).components().collect() };
+        Ok(ProcessSpec {
+            name,
+            program: resolve(Path::new(&self.program)),
+            args: self.args,
+            cwd: resolve(self.cwd.as_deref().unwrap_or(Path::new("."))),
+            env: self.env,
+            autostart: self.autostart,
+            stop_timeout: Duration::from_secs(timeout),
+        })
+    }
+}
+impl From<ProcessSpec> for RawProcess {
+    fn from(spec: ProcessSpec) -> Self {
+        Self {
+            name: Some(spec.name),
+            program: spec.program.to_string_lossy().into_owned(),
+            args: spec.args,
+            cwd: Some(spec.cwd),
+            env: spec.env,
+            autostart: spec.autostart,
+            stop_timeout_seconds: Some(spec.stop_timeout.as_secs()),
+        }
+    }
+}
+impl TryFrom<RawProcess> for ProcessSpec {
+    type Error = String;
+    fn try_from(raw: RawProcess) -> Result<Self, Self::Error> {
+        raw.resolve("supervised process", Path::new("/"))
+    }
+}
+
 impl Config {
     pub fn parse(input: &str, base: &Path) -> Result<Self, String> {
         if input.len() > 1024 * 1024 {
@@ -116,35 +170,7 @@ impl Config {
                         .into(),
                 );
             }
-            let name = p.name.unwrap_or_else(|| id.clone());
-            let timeout = p.stop_timeout_seconds.unwrap_or(10);
-            if name.trim().is_empty()
-                || p.program.trim().is_empty()
-                || timeout > 3600
-                || p.program.contains('\0')
-                || p.args.iter().any(|a| a.contains('\0'))
-                || p.cwd
-                    .as_ref()
-                    .is_some_and(|p| p.as_os_str().as_encoded_bytes().contains(&0))
-                || p.env
-                    .iter()
-                    .any(|(k, v)| k.is_empty() || k.contains(['=', '\0']) || v.contains('\0'))
-            {
-                return Err(format!("invalid process specification for {id}"));
-            }
-            let resolve = |p: &Path| -> PathBuf { base.join(p).components().collect() };
-            processes.insert(
-                id,
-                ProcessSpec {
-                    name,
-                    program: resolve(Path::new(&p.program)),
-                    args: p.args,
-                    cwd: resolve(p.cwd.as_deref().unwrap_or(Path::new("."))),
-                    env: p.env,
-                    autostart: p.autostart,
-                    stop_timeout: Duration::from_secs(timeout),
-                },
-            );
+            processes.insert(id.clone(), p.resolve(&id, base)?);
         }
         Ok(Self {
             listen: raw.web.listen,
