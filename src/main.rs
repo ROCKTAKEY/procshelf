@@ -7,7 +7,8 @@ use procshelf::{
 };
 use std::{fs::OpenOptions, io::Read, os::unix::fs::OpenOptionsExt, path::PathBuf};
 
-#[tokio::main]
+// Each run starts this executable as a supervisor; a worker pool per run would scale with CPU count.
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let result = if std::env::args().nth(1).as_deref() == Some("--supervise") {
         procshelf::processes::supervisor::serve()
@@ -61,6 +62,8 @@ async fn run() -> Result<(), String> {
         .and_then(|mut f| f.read_exact(&mut bytes))
         .map_err(|e| format!("cannot create session token: {e}"))?;
     let token = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        .map_err(|e| e.to_string())?;
     let manager = Manager::with_lease(
         config,
         std::env::current_exe().map_err(|e| e.to_string())?,
@@ -75,8 +78,6 @@ async fn run() -> Result<(), String> {
     };
     let app = procshelf::web::router(manager.clone(), listen, token);
     eprintln!("Procshelf listening on http://{listen}");
-    let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        .map_err(|e| e.to_string())?;
     let shutdown_manager = manager.clone();
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async move {

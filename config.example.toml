@@ -1,0 +1,16 @@
+[web]
+listen = "127.0.0.1:8787"
+
+[processes.clock]
+name = "Clock"
+program = "/bin/sh"
+args = ["-c", "while :; do date; sleep 5; done"]
+autostart = true
+stop_timeout_seconds = 5
+
+[processes.manual]
+name = "Manual task"
+program = "/bin/sh"
+args = ["-c", "echo 'Started manually'; sleep 30; echo 'Done'"]
+autostart = false
+stop_timeout_seconds = 5

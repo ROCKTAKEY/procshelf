@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
-    "check": "tsc --noEmit && prettier --check src index.html vite.config.ts",
-    "format": "prettier --write src index.html vite.config.ts",
+    "check": "tsc --noEmit && prettier --check src index.html vite.config.ts ../scripts/*.mjs",
+    "format": "prettier --write src index.html vite.config.ts ../scripts/*.mjs",
     "test": "node --test src/*.test.ts"
   },
   "dependencies": {

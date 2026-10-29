@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+exec ./scripts/dev sh -c '
+  cd web
+  npm ci --ignore-scripts
+  npm run check
+  npm test
+  npm run build
+  cd ..
+  cargo fmt --all -- --check
+  cargo clippy --locked --all-targets -- -D warnings
+  timeout 120 cargo test --locked
+  cargo build --locked
+  timeout 60 node --test scripts/service.test.mjs
+'
