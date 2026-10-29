@@ -437,6 +437,7 @@ fn launch(
 ) -> Result<mpsc::Sender<&'static str>, String> {
     let mut child = Command::new(executable)
         .arg("--supervise")
+        .process_group(0)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
