@@ -230,7 +230,7 @@ function App() {
       <div class="workspace">
         <aside class="shelf">
           <div class="section-heading">
-            <h2>プロセス</h2>
+            <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
           </div>
           <input
@@ -241,6 +241,11 @@ function App() {
             value={filter}
             onInput={(e) => setFilter(e.currentTarget.value)}
           />
+          <div class="process-columns" aria-hidden="true">
+            <span>名前</span>
+            <span>状態</span>
+            <span />
+          </div>
           <nav aria-label="登録されたプロセス">
             {filtered.map((p) => (
               <button
@@ -251,6 +256,16 @@ function App() {
               >
                 <span class="process-name">{p.name}</span>
                 <span class={`status ${p.state}`}>{stateLabels[p.state]}</span>
+                <svg
+                  class="row-chevron"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path d="m9 5 7 7-7 7" />
+                </svg>
                 {(p.config_pending || p.removed) && (
                   <span class="card-note">
                     {p.removed ? "設定から削除済み" : "設定変更あり"}
@@ -335,7 +350,15 @@ function App() {
                 <p class="outcome">終了・診断: {process.outcome}</p>
               )}
               <details class="configuration" key={process.id}>
-                <summary>実行情報・設定</summary>
+                <summary>
+                  <span>実行情報・設定</span>
+                  <span class="disclosure-open" aria-hidden="true">
+                    開く ＋
+                  </span>
+                  <span class="disclosure-close" aria-hidden="true">
+                    閉じる −
+                  </span>
+                </summary>
                 <dl>
                   <dt>ID</dt>
                   <dd>
