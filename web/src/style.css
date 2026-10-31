@@ -727,11 +727,8 @@ input[type="checkbox"] {
   align-items: center;
   column-gap: 10px;
 }
-.confirmation-flow li + li::before {
-  content: "↓";
-  grid-column: 1 / -1;
-  padding: 2px 0 2px 6px;
-  color: var(--muted);
+.confirmation-flow li + li {
+  margin-top: 8px;
 }
 .flow-step {
   display: inline-flex;
