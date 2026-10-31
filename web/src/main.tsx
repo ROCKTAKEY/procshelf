@@ -197,55 +197,36 @@ function App() {
     snapshot?.processes.filter((p) =>
       `${p.name} ${p.id}`.toLowerCase().includes(filter.toLowerCase()),
     ) ?? [];
+  const sidebarToggle = !mobile && (
+    <button
+      class="sidebar-toggle"
+      aria-controls="process-list"
+      aria-label={sidebarCollapsed ? "一覧を表示" : "一覧を隠す"}
+      aria-expanded={!sidebarCollapsed}
+      onClick={() => {
+        if (!sidebarCollapsed && listPane.current)
+          listScroll.current = listPane.current.scrollTop;
+        setSidebarCollapsed(!sidebarCollapsed);
+      }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      >
+        <rect x="3" y="4" width="18" height="16" rx="1" />
+        <path d="M9 4v16" />
+        <path d={sidebarCollapsed ? "m12 8 4 4-4 4" : "m16 8-4 4 4 4"} />
+      </svg>
+      {sidebarCollapsed ? "一覧" : "隠す"}
+    </button>
+  );
   return (
     <main>
       <header class="masthead">
-        <div class="header-leading">
-          {!mobile && (
-            <button
-              class="sidebar-toggle"
-              aria-controls="process-list"
-              aria-expanded={!sidebarCollapsed}
-              onClick={() => {
-                if (!sidebarCollapsed && listPane.current)
-                  listScroll.current = listPane.current.scrollTop;
-                setSidebarCollapsed(!sidebarCollapsed);
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                aria-hidden="true"
-              >
-                <rect x="3" y="4" width="18" height="16" rx="1" />
-                <path d="M9 4v16" />
-                <path
-                  d={sidebarCollapsed ? "m12 8 4 4-4 4" : "m16 8-4 4 4 4"}
-                />
-              </svg>
-              {sidebarCollapsed ? "一覧を表示" : "一覧を隠す"}
-            </button>
-          )}
-          {mobile && screen.kind === "process" && (
-            <button class="back-link" onClick={() => back({ kind: "list" })}>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M19 12H5m6-6-6 6 6 6" />
-              </svg>
-              一覧へ戻る
-            </button>
-          )}
-          <h1>Procshelf</h1>
-        </div>
+        <h1>Procshelf</h1>
         <div class={`connection ${connected ? "online" : ""}`} role="status">
           <span class="dot" />
           {connected ? "接続中" : "再接続しています"}
@@ -303,6 +284,7 @@ function App() {
           <div class="section-heading">
             <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
+            {sidebarToggle}
           </div>
           <input
             class="search"
@@ -355,11 +337,34 @@ function App() {
             </p>
           )}
         </aside>
+        {!mobile && sidebarCollapsed && (
+          <nav class="collapsed-rail" aria-label="一覧の表示">
+            {sidebarToggle}
+          </nav>
+        )}
         <section
           class="detail"
           aria-label="プロセスの詳細"
           hidden={!showingProcess}
         >
+          <nav class="detail-navigation" aria-label="上の階層へ戻る">
+            {mobile && screen.kind === "process" && (
+              <button class="back-link" onClick={() => back({ kind: "list" })}>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M19 12H5m6-6-6 6 6 6" />
+                </svg>
+                一覧へ戻る
+              </button>
+            )}
+          </nav>
           {process ? (
             <>
               <div class="detail-heading">
