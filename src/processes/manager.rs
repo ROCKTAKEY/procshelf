@@ -26,6 +26,7 @@ pub enum Action {
 pub struct ProcessView {
     pub id: String,
     pub name: String,
+    pub description: String,
     pub state: String,
     pub run_id: Option<u64>,
     pub pid: Option<u32>,
@@ -106,6 +107,7 @@ impl Entry {
         ProcessView {
             id: id.into(),
             name: spec.name.clone(),
+            description: spec.description.clone(),
             state: state.into(),
             run_id: self.last_run,
             pid,

@@ -10,6 +10,7 @@ use std::{
 #[serde(into = "RawProcess", try_from = "RawProcess")]
 pub struct ProcessSpec {
     pub(crate) name: String,
+    pub(crate) description: String,
     pub(crate) program: PathBuf,
     pub(crate) args: Vec<String>,
     pub(crate) cwd: PathBuf,
@@ -76,6 +77,8 @@ impl Default for Web {
 #[serde(deny_unknown_fields)]
 struct RawProcess {
     name: Option<String>,
+    #[serde(default)]
+    description: String,
     program: String,
     #[serde(default)]
     args: Vec<String>,
@@ -110,6 +113,7 @@ impl RawProcess {
         let resolve = |p: &Path| -> PathBuf { base.join(p).components().collect() };
         Ok(ProcessSpec {
             name,
+            description: self.description,
             program: resolve(Path::new(&self.program)),
             args: self.args,
             cwd: resolve(self.cwd.as_deref().unwrap_or(Path::new("."))),
@@ -123,6 +127,7 @@ impl From<ProcessSpec> for RawProcess {
     fn from(spec: ProcessSpec) -> Self {
         Self {
             name: Some(spec.name),
+            description: spec.description,
             program: spec.program.to_string_lossy().into_owned(),
             args: spec.args,
             cwd: Some(spec.cwd),

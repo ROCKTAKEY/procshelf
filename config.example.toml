@@ -3,6 +3,7 @@ listen = "127.0.0.1:8787"
 
 [processes.clock]
 name = "Clock"
+description = "5秒ごとに現在時刻を出力します。プロセスの稼働状態とログの更新を確認するためのサンプルです。"
 program = "/bin/sh"
 args = ["-c", "while :; do date; sleep 5; done"]
 autostart = true
@@ -10,6 +11,7 @@ stop_timeout_seconds = 5
 
 [processes.manual]
 name = "Manual task"
+description = "手動で起動する処理のサンプルです。開始をログに記録し、30秒後に完了します。"
 program = "/bin/sh"
 args = ["-c", "echo 'Started manually'; sleep 30; echo 'Done'"]
 autostart = false

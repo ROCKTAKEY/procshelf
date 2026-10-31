@@ -67,3 +67,19 @@ fn supervisor_wire_format_preserves_validation() {
     wire["program"] = serde_json::Value::String(String::new());
     assert!(serde_json::from_value::<procshelf::configuration::ProcessSpec>(wire).is_err());
 }
+
+#[test]
+fn description_is_optional_and_preserves_multiline_plain_text() {
+    let config = Config::parse(
+        "[processes.api]\nprogram='/bin/sh'\ndescription='''API の開発サーバー。\n<local> の動作確認に使用。'''",
+        Path::new("/tmp"),
+    ).unwrap();
+    let wire = serde_json::to_value(&config.processes["api"]).unwrap();
+    assert_eq!(
+        wire["description"],
+        "API の開発サーバー。\n<local> の動作確認に使用。"
+    );
+    let config = Config::parse("[processes.api]\nprogram='/bin/sh'", Path::new("/tmp")).unwrap();
+    let wire = serde_json::to_value(&config.processes["api"]).unwrap();
+    assert_eq!(wire["description"], "");
+}

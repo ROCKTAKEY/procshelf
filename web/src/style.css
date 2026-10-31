@@ -644,3 +644,15 @@ input[type="checkbox"] {
 .back-link:hover {
   text-decoration-thickness: 2px;
 }
+
+.process-description {
+  margin: 10px 24px 4px;
+  max-width: 65ch;
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mobile .process-description {
+  margin-inline: 16px;
+}

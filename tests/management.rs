@@ -114,3 +114,18 @@ async fn newly_added_autostart_runs_but_unknown_program_reports_failure() {
     state(&m, "failed").await;
     m.shutdown().await;
 }
+
+#[tokio::test]
+async fn description_updates_live_without_changing_the_running_execution() {
+    let m = Manager::new(config(true, ""), env!("CARGO_BIN_EXE_procshelf").into());
+    let first = state(&m, "running").await;
+    m.apply(config(true, "description = '開発用 API サーバー'"))
+        .await;
+    let updated = m.snapshot().await.processes.remove(0);
+    assert_eq!(updated.description, "開発用 API サーバー");
+    assert_eq!(updated.run_id, first.run_id);
+    assert!(!updated.config_pending);
+    m.apply(config(true, "")).await;
+    assert!(m.snapshot().await.processes[0].description.is_empty());
+    m.shutdown().await;
+}

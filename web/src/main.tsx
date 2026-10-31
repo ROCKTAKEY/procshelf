@@ -396,6 +396,9 @@ function App() {
                   {stateLabels[process.state]}
                 </span>
               </div>
+              {process.description.trim() && (
+                <p class="process-description">{process.description}</p>
+              )}
               {process.config_pending && (
                 <p class="inline-note">
                   設定変更あり。表示は次回起動の設定です。再起動で適用します。

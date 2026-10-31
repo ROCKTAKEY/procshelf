@@ -3,6 +3,7 @@ import { z } from "zod";
 export const processSchema = z.object({
   id: z.string(),
   name: z.string(),
+  description: z.string(),
   state: z.enum([
     "stopped",
     "starting",
