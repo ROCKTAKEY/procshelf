@@ -161,17 +161,7 @@ function App() {
   return (
     <main>
       <header class="masthead">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <div>
-            <h1>Procshelf</h1>
-            <p>PROCESS MANAGER</p>
-          </div>
-        </div>
+        <h1>Procshelf</h1>
         <div class={`connection ${connected ? "online" : ""}`} role="status">
           <span class="dot" />
           {connected ? "接続中" : "再接続しています"}
@@ -231,18 +221,12 @@ function App() {
             {filtered.map((p) => (
               <button
                 key={p.id}
-                class={`process-card ${selected === p.id ? "selected" : ""}`}
+                class={`process-row ${selected === p.id ? "selected" : ""}`}
                 aria-current={selected === p.id ? "true" : undefined}
                 onClick={() => setSelected(p.id)}
               >
-                <span class="process-title">
-                  {p.name}
-                  <span class={`state-dot ${p.state}`} />
-                </span>
-                <span class="process-sub">
-                  <code>{p.id}</code>
-                  <span>{stateLabels[p.state]}</span>
-                </span>
+                <span class="process-name">{p.name}</span>
+                <span class={`status ${p.state}`}>{stateLabels[p.state]}</span>
                 {(p.config_pending || p.removed) && (
                   <span class="card-note">
                     {p.removed ? "設定から削除済み" : "設定変更あり"}
@@ -258,56 +242,16 @@ function App() {
                 : "config.toml にプロセスを登録すると、ここに表示されます。"}
             </p>
           )}
-          <p class="shelf-note">
-            <code>config.toml</code>
-            <span>変更を自動反映</span>
-          </p>
         </aside>
         <section class="detail" aria-label="プロセスの詳細">
           {process ? (
             <>
               <div class="detail-heading">
-                <div>
-                  <span class="eyebrow">{process.id}</span>
-                  <h2>{process.name}</h2>
-                </div>
+                <h2>{process.name}</h2>
                 <span class={`status ${process.state}`}>
                   {stateLabels[process.state]}
                 </span>
               </div>
-              <div class="facts">
-                <span>
-                  自動起動{" "}
-                  <strong>{process.autostart ? "有効" : "無効"}</strong>
-                </span>
-                <span>
-                  PID <strong>{process.pid ?? "—"}</strong>
-                </span>
-                <span>
-                  実行番号 <strong>{process.run_id ?? "—"}</strong>
-                </span>
-              </div>
-              <div class="command">
-                <span class="field-label">コマンド</span>
-                <code>{[process.program, ...process.args].join(" ")}</code>
-                <small>
-                  <span class="field-label">作業ディレクトリ</span>
-                  {process.cwd}
-                </small>
-              </div>
-              {process.config_pending && (
-                <p class="inline-note">
-                  設定変更あり。表示は次回起動の設定です。再起動で適用します。
-                </p>
-              )}
-              {process.removed && (
-                <p class="inline-note">
-                  設定から削除済み。停止完了後に一覧から消えます。
-                </p>
-              )}
-              {process.outcome && (
-                <p class="outcome">終了・診断: {process.outcome}</p>
-              )}
               <div class="actions">
                 <button
                   class="primary"
@@ -341,6 +285,42 @@ function App() {
                   強制終了
                 </button>
               </div>
+              {process.config_pending && (
+                <p class="inline-note">
+                  設定変更あり。表示は次回起動の設定です。再起動で適用します。
+                </p>
+              )}
+              {process.removed && (
+                <p class="inline-note">
+                  設定から削除済み。停止完了後に一覧から消えます。
+                </p>
+              )}
+              {process.outcome && (
+                <p class="outcome">終了・診断: {process.outcome}</p>
+              )}
+              <details class="configuration" key={process.id}>
+                <summary>実行情報・設定</summary>
+                <dl>
+                  <dt>ID</dt>
+                  <dd>
+                    <code>{process.id}</code>
+                  </dd>
+                  <dt>PID</dt>
+                  <dd>{process.pid ?? "—"}</dd>
+                  <dt>実行番号</dt>
+                  <dd>{process.run_id ?? "—"}</dd>
+                  <dt>自動起動</dt>
+                  <dd>{process.autostart ? "有効" : "無効"}</dd>
+                  <dt>コマンド</dt>
+                  <dd>
+                    <code>{[process.program, ...process.args].join(" ")}</code>
+                  </dd>
+                  <dt>作業ディレクトリ</dt>
+                  <dd>
+                    <code>{process.cwd}</code>
+                  </dd>
+                </dl>
+              </details>
               <div class="log-heading">
                 <h3>出力ログ</h3>
                 <label>
@@ -402,10 +382,6 @@ function App() {
           )}
         </section>
       </div>
-      <footer>
-        <span>ブラウザを閉じてもプロセスは動作を継続します。</span>
-        <code>{snapshot?.listen ?? "localhost"}</code>
-      </footer>
     </main>
   );
 }
