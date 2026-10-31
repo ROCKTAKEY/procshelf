@@ -473,26 +473,39 @@ input[type="checkbox"] {
   flex-direction: column;
   min-width: 0;
 }
-.back-link,
-.sidebar-toggle {
+.header-leading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--surface);
-  color: var(--focus);
-  font-size: 13px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  padding: 8px 12px;
-  min-height: 36px;
+  gap: 12px;
+  min-width: 0;
 }
-.sidebar-toggle svg {
+.back-link,
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 8px;
+  min-height: 32px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sidebar-toggle svg,
+.back-link svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
 }
 .sidebar-toggle:hover,
 .back-link:hover {
   background: var(--subtle);
+  border-color: var(--muted);
 }
 .mobile .shelf nav {
   max-height: none;
