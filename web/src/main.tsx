@@ -277,41 +277,49 @@ function App() {
                 </span>
               </div>
               <div class="actions">
-                <button
-                  class="primary"
-                  disabled={busy || !canStart(process.state, process.removed)}
-                  onClick={() => void act("start", process)}
-                >
-                  <ActionIcon action="start" />
-                  <span>起動</span>
-                </button>
-                <button
-                  disabled={busy || !active || process.state === "stopping"}
-                  onClick={() => void act("stop", process)}
-                >
-                  <ActionIcon action="stop" />
-                  <span>停止</span>
-                </button>
-                <button
-                  disabled={
-                    busy ||
-                    !active ||
-                    process.state === "stopping" ||
-                    process.removed
-                  }
-                  onClick={() => void act("restart", process)}
-                >
-                  <ActionIcon action="restart" />
-                  <span>再起動</span>
-                </button>
-                <button
-                  class="danger"
-                  disabled={busy || !active}
-                  onClick={() => void act("kill", process)}
-                >
-                  <ActionIcon action="kill" />
-                  <span>強制終了</span>
-                </button>
+                {active ? (
+                  <button
+                    class="primary"
+                    disabled={busy || process.state === "stopping"}
+                    onClick={() => void act("stop", process)}
+                  >
+                    <ActionIcon action="stop" />
+                    <span>
+                      {process.state === "stopping" ? "停止処理中" : "停止"}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    class="primary"
+                    disabled={busy || !canStart(process.state, process.removed)}
+                    onClick={() => void act("start", process)}
+                  >
+                    <ActionIcon action="start" />
+                    <span>起動</span>
+                  </button>
+                )}
+                {active && (
+                  <>
+                    <button
+                      disabled={
+                        busy || process.state === "stopping" || process.removed
+                      }
+                      onClick={() => void act("restart", process)}
+                    >
+                      <ActionIcon action="restart" />
+                      <span>再起動</span>
+                    </button>
+                    <span class="action-separator" aria-hidden="true" />
+                    <button
+                      class="danger"
+                      disabled={busy}
+                      onClick={() => void act("kill", process)}
+                    >
+                      <ActionIcon action="kill" />
+                      <span>強制終了</span>
+                    </button>
+                  </>
+                )}
               </div>
               {process.config_pending && (
                 <p class="inline-note">

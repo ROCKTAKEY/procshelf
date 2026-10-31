@@ -203,6 +203,7 @@ pre {
 }
 .actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 6px;
   padding: 4px 12px;
@@ -221,6 +222,12 @@ pre {
   background: var(--surface);
   font-size: 14px;
 }
+.action-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
+}
 .action-icon {
   width: 16px;
   height: 16px;
@@ -230,13 +237,28 @@ pre {
   background: var(--subtle);
   border-color: var(--muted);
 }
+.actions button:disabled {
+  background: var(--subtle);
+  border-color: transparent;
+  color: var(--muted);
+  opacity: 0.45;
+}
 .actions .primary:not(:disabled) {
+  font-weight: 600;
   background: var(--focus);
   border-color: var(--focus);
   color: #fff;
 }
+.actions .primary:hover:not(:disabled) {
+  filter: brightness(0.88);
+}
 .actions .danger {
   color: var(--red);
+  border-color: transparent;
+}
+.actions .danger:hover:not(:disabled) {
+  border-color: var(--red);
+  background: var(--surface);
 }
 .configuration {
   border-top: 1px solid var(--line);
