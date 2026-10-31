@@ -416,7 +416,7 @@ function App() {
                 <div class="actions">
                   {active ? (
                     <button
-                      class="primary"
+                      class="primary stop"
                       disabled={busy || process.state === "stopping"}
                       onClick={() => void act("stop", process)}
                     >

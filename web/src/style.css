@@ -656,3 +656,8 @@ input[type="checkbox"] {
 .mobile .process-description {
   margin-inline: 16px;
 }
+
+.actions .primary.stop:not(:disabled) {
+  background: #a83229;
+  border-color: #a83229;
+}
