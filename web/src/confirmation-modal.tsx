@@ -31,7 +31,22 @@ function ConfirmationModal({
       }}
     >
       <h2 id="confirmation-title">{request.title}</h2>
-      <p id="confirmation-message">{request.message}</p>
+      {request.sequence ? (
+        <ol id="confirmation-message" class="confirmation-flow">
+          {request.effects.map((effect, index) => (
+            <li key={effect}>
+              <span class="flow-step">{index + 1}</span>
+              <span>{effect}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <ul id="confirmation-message" class="confirmation-effects">
+          {request.effects.map((effect) => (
+            <li key={effect}>{effect}</li>
+          ))}
+        </ul>
+      )}
       <div class="confirmation-actions">
         <button autoFocus onClick={() => finish(false)}>
           キャンセル
