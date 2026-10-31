@@ -178,11 +178,11 @@ pre {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 12px 0;
+  padding: 24px 24px 0;
   flex-wrap: wrap;
 }
 .detail-heading h2 {
-  font-size: 26px;
+  font-size: 36px;
   line-height: 1.25;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -219,7 +219,8 @@ pre {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 10px 12px 4px;
+  padding: 16px 24px 4px;
+  gap: 10px;
 }
 .actions button {
   display: inline-flex;
@@ -257,6 +258,9 @@ pre {
   opacity: 0.45;
 }
 .actions .primary:not(:disabled) {
+  min-height: 40px;
+  min-width: 96px;
+  font-size: 15px;
   font-weight: 600;
   background: var(--focus);
   border-color: var(--focus);
@@ -267,7 +271,7 @@ pre {
 }
 .actions .danger {
   color: var(--red);
-  border-color: var(--red);
+  border-color: transparent;
 }
 .actions .danger:hover:not(:disabled) {
   border-color: var(--red);
@@ -294,10 +298,11 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 10px 12px;
-  background: var(--surface);
+  border-bottom: 1px solid #3b4148;
+  padding: 12px 16px;
+  margin: 0 24px;
+  background: #252a30;
+  color: #f0f2f4;
 }
 .log-heading h3 {
   font-size: 15px;
@@ -314,12 +319,12 @@ input[type="checkbox"] {
   accent-color: var(--focus);
 }
 .logs {
-  margin: 0;
-  min-height: 240px;
+  margin: 0 24px;
+  min-height: 320px;
   overflow: visible;
   background: #181a1c;
   color: #dce0e3;
-  padding: 12px;
+  padding: 16px;
   font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -349,7 +354,7 @@ input[type="checkbox"] {
 .footnote {
   color: var(--muted);
   font-size: 11px;
-  padding: 4px 12px;
+  padding: 6px 24px;
 }
 .notice {
   padding: 8px 12px;
@@ -413,7 +418,24 @@ input[type="checkbox"] {
     min-height: 44px;
   }
   .detail-heading {
-    padding-top: 8px;
+    padding: 8px 16px 0;
+  }
+  .detail-heading h2 {
+    font-size: 30px;
+  }
+  .actions {
+    padding: 14px 16px 4px;
+    gap: 6px;
+  }
+  .actions .primary:not(:disabled) {
+    min-width: 80px;
+  }
+  .mobile .configuration {
+    margin: 4px 16px 28px;
+  }
+  .log-heading,
+  .logs {
+    margin-inline: 0;
   }
   .log-heading {
     min-height: 44px;
@@ -534,6 +556,8 @@ input[type="checkbox"] {
   grid-template-columns: minmax(0, 1fr);
 }
 .desktop .shelf {
+  background: var(--subtle);
+  min-height: calc(100dvh - 41px);
   position: sticky;
   top: 0;
   max-height: 100dvh;
@@ -547,13 +571,13 @@ input[type="checkbox"] {
   margin: 0;
   padding: 10px 8px;
   box-shadow: none;
-  background: var(--surface);
+  background: transparent;
 }
 .desktop .process-row.selected {
   background: var(--selected);
 }
 .desktop .process-row:hover {
-  background: var(--subtle);
+  background: var(--selected);
 }
 .desktop .process-label {
   flex-direction: row;
@@ -576,7 +600,7 @@ input[type="checkbox"] {
 }
 .configuration {
   padding: 0;
-  margin: 2px 12px 20px;
+  margin: 4px 24px 32px;
 }
 .configuration summary {
   cursor: pointer;
