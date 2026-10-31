@@ -25,6 +25,30 @@ async function json(url: string, options?: RequestInit): Promise<unknown> {
   }
   return response.json();
 }
+function ActionIcon({ action }: { action: Action }) {
+  const paths: Record<Action, string> = {
+    start: "M7 4 19 12 7 20Z",
+    stop: "M6 6H18V18H6Z",
+    restart: "M20 7V3M20 7H16M20 7A9 9 0 1 0 21 14",
+    kill: "M5 5 19 19M19 5 5 19",
+  };
+  return (
+    <svg
+      class="action-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={paths[action]} />
+    </svg>
+  );
+}
+
 function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connected, setConnected] = useState(false);
@@ -258,13 +282,15 @@ function App() {
                   disabled={busy || !canStart(process.state, process.removed)}
                   onClick={() => void act("start", process)}
                 >
-                  起動
+                  <ActionIcon action="start" />
+                  <span>起動</span>
                 </button>
                 <button
                   disabled={busy || !active || process.state === "stopping"}
                   onClick={() => void act("stop", process)}
                 >
-                  停止
+                  <ActionIcon action="stop" />
+                  <span>停止</span>
                 </button>
                 <button
                   disabled={
@@ -275,14 +301,16 @@ function App() {
                   }
                   onClick={() => void act("restart", process)}
                 >
-                  再起動
+                  <ActionIcon action="restart" />
+                  <span>再起動</span>
                 </button>
                 <button
                   class="danger"
                   disabled={busy || !active}
                   onClick={() => void act("kill", process)}
                 >
-                  強制終了
+                  <ActionIcon action="kill" />
+                  <span>強制終了</span>
                 </button>
               </div>
               {process.config_pending && (

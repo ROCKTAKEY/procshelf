@@ -1,9 +1,10 @@
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+    Arial, "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", Meiryo, sans-serif;
   color: #252628;
   background: #fff;
-  font-synthesis: none;
+  font-synthesis: weight;
   font-size: 14px;
   line-height: 1.5;
   color-scheme: light;
@@ -204,16 +205,26 @@ pre {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 4px 12px;
 }
 .actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 32px;
-  padding: 4px 12px;
+  padding: 0 10px;
+  line-height: 1;
   border: 1px solid var(--line);
   border-radius: 2px;
   color: inherit;
   background: var(--surface);
   font-size: 13px;
+}
+.action-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 .actions button:hover:not(:disabled) {
   background: var(--subtle);
