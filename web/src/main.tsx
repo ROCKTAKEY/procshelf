@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import {
   canStart,
   logsSchema,
@@ -54,41 +54,21 @@ function ActionIcon({ action }: { action: Action }) {
 function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connected, setConnected] = useState(false);
-  const { screen, mobile, navigate, back } = useNavigation(() => {
-    if (previousLog.current && logPane.current?.getClientRects().length)
-      logPositions.current.set(previousLog.current, logPane.current.scrollTop);
-  });
+  const { screen, mobile, navigate, back } = useNavigation();
   const [lastSelected, setLastSelected] = useState<string | null>(null);
   const selected = screen.kind === "process" ? screen.id : lastSelected;
   const information =
     screen.kind === "process" && screen.panel === "information";
-  const showingProcess = !mobile || screen.kind === "process";
+  const showingProcess = screen.kind === "process";
   const [filter, setFilter] = useState("");
   const [logs, setLogs] = useState<Logs | null>(null);
   const [logError, setLogError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [follow, setFollow] = useState(
-    () => !matchMedia("(max-width: 640px)").matches,
-  );
-  useEffect(() => {
-    if (mobile) setFollow(false);
-  }, [mobile]);
+  const [follow, setFollow] = useState(false);
   const token = useRef("");
   const logPane = useRef<HTMLPreElement>(null);
   const process = snapshot?.processes.find((p) => p.id === selected) ?? null;
-  const logPositions = useRef(new Map<string, number>());
-  const previousLog = useRef<string | null>(null);
-  const listPane = useRef<HTMLElement>(null);
-  const listPosition = useRef(0);
-
-  useLayoutEffect(() => {
-    if (logPane.current && selected && !information && showingProcess)
-      logPane.current.scrollTop = logPositions.current.get(selected) ?? 0;
-    previousLog.current = !information && showingProcess ? selected : null;
-    if (listPane.current) listPane.current.scrollTop = listPosition.current;
-  }, [selected, information, showingProcess]);
-
   useEffect(() => {
     let disposed = false;
     let events: EventSource | undefined;
@@ -140,7 +120,7 @@ function App() {
         setLastSelected(screen.id);
       else navigate({ kind: "list" }, true);
     } else if (!snapshot.processes.some((p) => p.id === lastSelected)) {
-      setLastSelected(snapshot.processes[0]?.id ?? null);
+      setLastSelected(null);
     }
   }, [snapshot, screen, lastSelected]);
 
@@ -174,8 +154,7 @@ function App() {
 
   useEffect(() => {
     if (!follow || !logPane.current || information || !showingProcess) return;
-    if (mobile) logPane.current.scrollIntoView({ block: "end" });
-    else logPane.current.scrollTop = logPane.current.scrollHeight;
+    logPane.current.scrollIntoView({ block: "end" });
   }, [logs, follow]);
 
   async function act(action: Action, target: Process) {
@@ -260,14 +239,7 @@ function App() {
         </div>
       )}
       <div class={`workspace ${mobile ? "mobile" : "desktop"}`}>
-        <aside
-          class="shelf"
-          hidden={mobile && screen.kind !== "list"}
-          ref={listPane}
-          onScroll={(e) => {
-            listPosition.current = e.currentTarget.scrollTop;
-          }}
-        >
+        <aside class="shelf" hidden={screen.kind !== "list"}>
           <div class="section-heading">
             <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
@@ -287,7 +259,7 @@ function App() {
                 class={`process-row ${selected === p.id ? "selected" : ""}`}
                 aria-current={selected === p.id ? "true" : undefined}
                 onClick={() => {
-                  if (selected !== p.id) setFollow(!mobile);
+                  if (selected !== p.id) setFollow(false);
                   navigate({ kind: "process", id: p.id, panel: "operations" });
                 }}
               >
@@ -328,7 +300,7 @@ function App() {
           aria-label="プロセスの詳細"
           hidden={!showingProcess}
         >
-          {mobile && screen.kind === "process" && (
+          {screen.kind === "process" && (
             <button
               class="back-link"
               onClick={() => back(parentScreen(screen))}
@@ -345,34 +317,6 @@ function App() {
                   {stateLabels[process.state]}
                 </span>
               </div>
-              {!mobile && (
-                <nav class="detail-tabs" aria-label="詳細表示">
-                  <button
-                    aria-current={!information ? "page" : undefined}
-                    onClick={() =>
-                      navigate({
-                        kind: "process",
-                        id: process.id,
-                        panel: "operations",
-                      })
-                    }
-                  >
-                    操作・ログ
-                  </button>
-                  <button
-                    aria-current={information ? "page" : undefined}
-                    onClick={() =>
-                      navigate({
-                        kind: "process",
-                        id: process.id,
-                        panel: "information",
-                      })
-                    }
-                  >
-                    実行情報
-                  </button>
-                </nav>
-              )}
               {process.config_pending && (
                 <p class="inline-note">
                   設定変更あり。表示は次回起動の設定です。再起動で適用します。
@@ -436,20 +380,18 @@ function App() {
                     </>
                   )}
                 </div>
-                {mobile && (
-                  <button
-                    class="information-link"
-                    onClick={() =>
-                      navigate({
-                        kind: "process",
-                        id: process.id,
-                        panel: "information",
-                      })
-                    }
-                  >
-                    実行情報 <span aria-hidden="true">›</span>
-                  </button>
-                )}
+                <button
+                  class="information-link"
+                  onClick={() =>
+                    navigate({
+                      kind: "process",
+                      id: process.id,
+                      panel: "information",
+                    })
+                  }
+                >
+                  実行情報 <span aria-hidden="true">›</span>
+                </button>
                 <div class="log-heading">
                   <h3>出力ログ</h3>
                   <label>
@@ -475,13 +417,6 @@ function App() {
                 <pre
                   class="logs"
                   ref={logPane}
-                  onScroll={(e) => {
-                    if (previousLog.current)
-                      logPositions.current.set(
-                        previousLog.current,
-                        e.currentTarget.scrollTop,
-                      );
-                  }}
                   aria-label="プロセスの出力ログ"
                   tabIndex={0}
                 >

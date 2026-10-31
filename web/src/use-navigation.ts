@@ -1,9 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { parseScreen, screenHash, type Screen } from "./navigation";
 
-export function useNavigation(beforeLeave: () => void) {
-  const leave = useRef(beforeLeave);
-  leave.current = beforeLeave;
+export function useNavigation() {
   const [screen, setScreen] = useState(() => parseScreen(location.hash));
   const [mobile, setMobile] = useState(
     () => matchMedia("(max-width: 640px)").matches,
@@ -15,11 +13,9 @@ export function useNavigation(beforeLeave: () => void) {
   useEffect(() => {
     const media = matchMedia("(max-width: 640px)");
     const resize = () => {
-      leave.current();
       setMobile(media.matches);
     };
     const visit = () => {
-      leave.current();
       setScreen(parseScreen(location.hash));
     };
     const remember = () =>
@@ -45,7 +41,6 @@ export function useNavigation(beforeLeave: () => void) {
   }, [key]);
 
   function navigate(next: Screen, replace = false) {
-    leave.current();
     positions.current.set(current.current, window.scrollY);
     if (screenHash(next) === screenHash(screen)) return;
     const state = { returnTo: screenHash(screen) };
@@ -55,7 +50,6 @@ export function useNavigation(beforeLeave: () => void) {
   }
 
   function back(next: Screen) {
-    leave.current();
     positions.current.set(current.current, window.scrollY);
     if (history.state?.returnTo === screenHash(next)) history.back();
     else navigate(next);
