@@ -163,11 +163,13 @@ function App() {
       <header class="masthead">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">
-            ▤
+            <i />
+            <i />
+            <i />
           </span>
           <div>
             <h1>Procshelf</h1>
-            <p>プロセスを、手元に。</p>
+            <p>PROCESS MANAGER</p>
           </div>
         </div>
         <div class={`connection ${connected ? "online" : ""}`} role="status">
@@ -257,9 +259,8 @@ function App() {
             </p>
           )}
           <p class="shelf-note">
-            登録は <code>config.toml</code> から。
-            <br />
-            保存した変更は自動で反映されます。
+            <code>config.toml</code>
+            <span>変更を自動反映</span>
           </p>
         </aside>
         <section class="detail" aria-label="プロセスの詳細">
@@ -267,7 +268,7 @@ function App() {
             <>
               <div class="detail-heading">
                 <div>
-                  <span class="eyebrow">PROCESS / {process.id}</span>
+                  <span class="eyebrow">{process.id}</span>
                   <h2>{process.name}</h2>
                 </div>
                 <span class={`status ${process.state}`}>
@@ -283,12 +284,16 @@ function App() {
                   PID <strong>{process.pid ?? "—"}</strong>
                 </span>
                 <span>
-                  実行 <strong>{process.run_id ?? "—"}</strong>
+                  実行番号 <strong>{process.run_id ?? "—"}</strong>
                 </span>
               </div>
               <div class="command">
+                <span class="field-label">コマンド</span>
                 <code>{[process.program, ...process.args].join(" ")}</code>
-                <small>作業ディレクトリ: {process.cwd}</small>
+                <small>
+                  <span class="field-label">作業ディレクトリ</span>
+                  {process.cwd}
+                </small>
               </div>
               {process.config_pending && (
                 <p class="inline-note">
@@ -370,7 +375,7 @@ function App() {
                         {new Date(e.time_ms).toLocaleTimeString()} · #{e.run_id}{" "}
                         · {e.stream}
                       </span>
-                      {e.text}
+                      <span class="log-text">{e.text}</span>
                     </span>
                   ))
                 ) : (
@@ -383,12 +388,9 @@ function App() {
             </>
           ) : (
             <div class="welcome">
-              <span class="welcome-mark" aria-hidden="true">
-                ▤
-              </span>
               <h2>
                 {snapshot
-                  ? "棚にプロセスを追加しましょう"
+                  ? "登録されたプロセスはありません"
                   : "管理サービスに接続しています"}
               </h2>
               <p>
