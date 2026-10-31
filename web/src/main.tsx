@@ -60,9 +60,15 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const listPane = useRef<HTMLElement>(null);
   const listScroll = useRef(0);
+  const toggleButton = useRef<HTMLButtonElement>(null);
+  const restoreToggleFocus = useRef(false);
   useLayoutEffect(() => {
     if (!mobile && !sidebarCollapsed && listPane.current)
       listPane.current.scrollTop = listScroll.current;
+    if (restoreToggleFocus.current) {
+      toggleButton.current?.focus({ preventScroll: true });
+      restoreToggleFocus.current = false;
+    }
   }, [mobile, sidebarCollapsed]);
   const [filter, setFilter] = useState("");
   const [logs, setLogs] = useState<Logs | null>(null);
@@ -200,12 +206,14 @@ function App() {
   const sidebarToggle = !mobile && (
     <button
       class="sidebar-toggle"
+      ref={toggleButton}
       aria-controls="process-list"
       aria-label={sidebarCollapsed ? "一覧を表示" : "一覧を隠す"}
       aria-expanded={!sidebarCollapsed}
       onClick={() => {
         if (!sidebarCollapsed && listPane.current)
           listScroll.current = listPane.current.scrollTop;
+        restoreToggleFocus.current = true;
         setSidebarCollapsed(!sidebarCollapsed);
       }}
     >
@@ -220,7 +228,7 @@ function App() {
         <path d="M9 4v16" />
         <path d={sidebarCollapsed ? "m12 8 4 4-4 4" : "m16 8-4 4 4 4"} />
       </svg>
-      {sidebarCollapsed ? "一覧" : "隠す"}
+      {sidebarCollapsed ? "一覧を表示" : "隠す"}
     </button>
   );
   return (
@@ -284,7 +292,7 @@ function App() {
           <div class="section-heading">
             <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
-            {sidebarToggle}
+            {!sidebarCollapsed && sidebarToggle}
           </div>
           <input
             class="search"
@@ -338,7 +346,7 @@ function App() {
           )}
         </aside>
         {!mobile && sidebarCollapsed && (
-          <nav class="collapsed-rail" aria-label="一覧の表示">
+          <nav class="list-navigation" aria-label="一覧の表示">
             {sidebarToggle}
           </nav>
         )}
@@ -349,7 +357,22 @@ function App() {
         >
           <nav class="detail-navigation" aria-label="上の階層へ戻る">
             {mobile && screen.kind === "process" && (
-              <button class="back-link" onClick={() => back({ kind: "list" })}>
+              <a
+                class="back-link"
+                href="#/"
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.ctrlKey ||
+                    event.metaKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  back({ kind: "list" });
+                }}
+              >
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -361,8 +384,8 @@ function App() {
                 >
                   <path d="M19 12H5m6-6-6 6 6 6" />
                 </svg>
-                一覧へ戻る
-              </button>
+                プロセス一覧へ
+              </a>
             )}
           </nav>
           {process ? (
