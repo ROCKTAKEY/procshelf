@@ -214,12 +214,12 @@ pre {
   gap: 6px;
   min-height: 32px;
   padding: 0 10px;
-  line-height: 1;
+  line-height: 20px;
   border: 1px solid var(--line);
   border-radius: 2px;
   color: inherit;
   background: var(--surface);
-  font-size: 13px;
+  font-size: 14px;
 }
 .action-icon {
   width: 16px;
@@ -395,9 +395,6 @@ input[type="checkbox"] {
   .detail-heading {
     padding-top: 8px;
   }
-  .actions button {
-    min-height: 44px;
-  }
   .configuration summary {
     min-height: 44px;
     display: list-item;
@@ -427,7 +424,6 @@ input[type="checkbox"] {
   }
 }
 @media (pointer: coarse) {
-  .actions button,
   .process-row,
   .search,
   .configuration summary {
