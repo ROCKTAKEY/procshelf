@@ -474,27 +474,25 @@ input[type="checkbox"] {
   min-width: 0;
 }
 .back-link,
-.information-link {
+.sidebar-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--surface);
   color: var(--focus);
   font-size: 13px;
-}
-.back-link {
   border: 0;
   border-bottom: 1px solid var(--line);
   padding: 8px 12px;
-  min-height: 40px;
-}
-.information-link {
-  justify-content: space-between;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  margin: 4px 12px 12px;
-  padding: 6px 8px;
   min-height: 36px;
+}
+.sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+.sidebar-toggle:hover,
+.back-link:hover {
+  background: var(--subtle);
 }
 .mobile .shelf nav {
   max-height: none;
@@ -529,20 +527,32 @@ input[type="checkbox"] {
   overflow: visible;
 }
 
-.desktop .shelf .search {
-  width: min(360px, calc(100% - 24px));
+.desktop {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  align-items: start;
 }
-.desktop .shelf nav {
-  max-width: 760px;
+.desktop.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.desktop .shelf {
+  position: sticky;
+  top: 0;
+  max-height: 100dvh;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
 }
 .desktop .process-row {
+  display: block;
   border: 0;
-  border-bottom: 1px solid var(--line);
   border-radius: 0;
   margin: 0;
-  padding: 10px 4px;
+  padding: 6px 8px;
   box-shadow: none;
   background: var(--surface);
+}
+.desktop .process-row.selected {
+  background: var(--selected);
 }
 .desktop .process-row:hover {
   background: var(--subtle);
@@ -550,9 +560,41 @@ input[type="checkbox"] {
 .desktop .process-label {
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
-.desktop .information-link {
-  align-self: flex-start;
-  min-width: 160px;
+.desktop .process-name {
+  font-size: 13px;
+  font-weight: 400;
+  min-width: 0;
+}
+.desktop .selected .process-name {
+  font-weight: 600;
+}
+.desktop .process-label .status {
+  font-size: 11px;
+}
+.desktop .row-chevron {
+  display: none;
+}
+.configuration {
+  padding: 0;
+  margin: 4px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.configuration summary {
+  cursor: pointer;
+  color: var(--focus);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.configuration summary:hover {
+  background: var(--subtle);
+}
+.configuration summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.configuration dl {
+  padding: 8px 12px 12px;
 }

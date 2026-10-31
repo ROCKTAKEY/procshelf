@@ -1,37 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseScreen, screenHash, parentScreen } from "./navigation.ts";
+import { parseScreen, screenHash } from "./navigation.ts";
 
-test("a shared URL selects the same process and information screen", () => {
-  const screen = {
-    kind: "process",
-    id: "worker-1",
-    panel: "information",
-  } as const;
-  assert.deepEqual(parseScreen(screenHash(screen)), screen);
+test("a process URL opens its workspace, where information can expand without navigation", () => {
+  const screen = { kind: "process", id: "worker-1" } as const;
+  assert.deepEqual(parseScreen("#/processes/worker-1"), screen);
+  assert.equal(screenHash(screen), "#/processes/worker-1");
 });
-test("malformed or unsupported URLs return to the list", () => {
+test("malformed and unsupported URLs return to the list", () => {
   for (const hash of [
     "",
     "#/",
-    "#/processes/%ZZ/operations",
-    "#/processes/a%2Fb/operations",
+    "#/processes/%ZZ",
+    "#/processes/a%2Fb",
     "#/processes/a/kill",
     "#/other",
   ])
     assert.deepEqual(parseScreen(hash), { kind: "list" });
-});
-test("information returns to the same process before returning to the list", () => {
-  const information = {
-    kind: "process",
-    id: "clock",
-    panel: "information",
-  } as const;
-  const operations = parentScreen(information);
-  assert.deepEqual(operations, {
-    kind: "process",
-    id: "clock",
-    panel: "operations",
-  });
-  assert.deepEqual(parentScreen(operations), { kind: "list" });
 });

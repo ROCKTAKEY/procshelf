@@ -1,18 +1,12 @@
-export type Screen =
-  | { kind: "list" }
-  | { kind: "process"; id: string; panel: "operations" | "information" };
+export type Screen = { kind: "list" } | { kind: "process"; id: string };
 
 export function parseScreen(hash: string): Screen {
-  const match = /^#\/processes\/([^/]+)\/(operations|information)$/.exec(hash);
+  const match = /^#\/processes\/([^/]+)$/.exec(hash);
   if (!match) return { kind: "list" };
   try {
     const id = decodeURIComponent(match[1]);
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) return { kind: "list" };
-    return {
-      kind: "process",
-      id,
-      panel: match[2] === "information" ? "information" : "operations",
-    };
+    return { kind: "process", id };
   } catch {
     return { kind: "list" };
   }
@@ -20,10 +14,5 @@ export function parseScreen(hash: string): Screen {
 export function screenHash(screen: Screen): string {
   return screen.kind === "list"
     ? "#/"
-    : `#/processes/${encodeURIComponent(screen.id)}/${screen.panel}`;
-}
-export function parentScreen(screen: Screen): Screen {
-  return screen.kind === "process" && screen.panel === "information"
-    ? { ...screen, panel: "operations" }
-    : { kind: "list" };
+    : `#/processes/${encodeURIComponent(screen.id)}`;
 }

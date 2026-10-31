@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   canStart,
   logsSchema,
@@ -8,7 +8,6 @@ import {
   stateLabels,
 } from "./protocol";
 import type { Action, Logs, Process, Snapshot } from "./protocol";
-import { parentScreen } from "./navigation";
 import { useNavigation } from "./use-navigation";
 import "./style.css";
 
@@ -57,9 +56,14 @@ function App() {
   const { screen, mobile, navigate, back } = useNavigation();
   const [lastSelected, setLastSelected] = useState<string | null>(null);
   const selected = screen.kind === "process" ? screen.id : lastSelected;
-  const information =
-    screen.kind === "process" && screen.panel === "information";
-  const showingProcess = screen.kind === "process";
+  const showingProcess = !mobile || screen.kind === "process";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const listPane = useRef<HTMLElement>(null);
+  const listScroll = useRef(0);
+  useLayoutEffect(() => {
+    if (!mobile && !sidebarCollapsed && listPane.current)
+      listPane.current.scrollTop = listScroll.current;
+  }, [mobile, sidebarCollapsed]);
   const [filter, setFilter] = useState("");
   const [logs, setLogs] = useState<Logs | null>(null);
   const [logError, setLogError] = useState<string | null>(null);
@@ -120,9 +124,9 @@ function App() {
         setLastSelected(screen.id);
       else navigate({ kind: "list" }, true);
     } else if (!snapshot.processes.some((p) => p.id === lastSelected)) {
-      setLastSelected(null);
+      setLastSelected(mobile ? null : (snapshot.processes[0]?.id ?? null));
     }
-  }, [snapshot, screen, lastSelected]);
+  }, [snapshot, screen, lastSelected, mobile]);
 
   useEffect(() => {
     setLogs(null);
@@ -153,7 +157,7 @@ function App() {
   }, [selected, connected]);
 
   useEffect(() => {
-    if (!follow || !logPane.current || information || !showingProcess) return;
+    if (!follow || !logPane.current || !showingProcess) return;
     logPane.current.scrollIntoView({ block: "end" });
   }, [logs, follow]);
 
@@ -238,8 +242,19 @@ function App() {
           管理サービスを終了しています。配下の停止完了を待っています。
         </div>
       )}
-      <div class={`workspace ${mobile ? "mobile" : "desktop"}`}>
-        <aside class="shelf" hidden={screen.kind !== "list"}>
+      <div
+        class={`workspace ${mobile ? "mobile" : "desktop"} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+      >
+        <aside
+          id="process-list"
+          class="shelf"
+          ref={listPane}
+          onScroll={(e) => {
+            if (e.currentTarget.getClientRects().length)
+              listScroll.current = e.currentTarget.scrollTop;
+          }}
+          hidden={mobile ? screen.kind !== "list" : sidebarCollapsed}
+        >
           <div class="section-heading">
             <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
@@ -260,7 +275,7 @@ function App() {
                 aria-current={selected === p.id ? "true" : undefined}
                 onClick={() => {
                   if (selected !== p.id) setFollow(false);
-                  navigate({ kind: "process", id: p.id, panel: "operations" });
+                  navigate({ kind: "process", id: p.id });
                 }}
               >
                 <span class="process-label">
@@ -300,13 +315,33 @@ function App() {
           aria-label="プロセスの詳細"
           hidden={!showingProcess}
         >
-          {screen.kind === "process" && (
+          {!mobile && (
             <button
-              class="back-link"
-              onClick={() => back(parentScreen(screen))}
+              class="sidebar-toggle"
+              aria-controls="process-list"
+              aria-expanded={!sidebarCollapsed}
+              onClick={() => {
+                if (!sidebarCollapsed && listPane.current)
+                  listScroll.current = listPane.current.scrollTop;
+                setSidebarCollapsed(!sidebarCollapsed);
+              }}
             >
-              <span aria-hidden="true">‹</span>{" "}
-              {information ? "操作・ログへ戻る" : "プロセス一覧へ戻る"}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="16" rx="1" />
+                <path d="M9 4v16" />
+              </svg>
+              {sidebarCollapsed ? "一覧を表示" : "一覧を隠す"}
+            </button>
+          )}
+          {mobile && screen.kind === "process" && (
+            <button class="back-link" onClick={() => back({ kind: "list" })}>
+              <span aria-hidden="true">‹</span> プロセス一覧へ戻る
             </button>
           )}
           {process ? (
@@ -330,7 +365,7 @@ function App() {
               {process.outcome && (
                 <p class="outcome">終了・診断: {process.outcome}</p>
               )}
-              <div class="operations" hidden={information}>
+              <div class="operations">
                 <div class="actions">
                   {active ? (
                     <button
@@ -380,18 +415,31 @@ function App() {
                     </>
                   )}
                 </div>
-                <button
-                  class="information-link"
-                  onClick={() =>
-                    navigate({
-                      kind: "process",
-                      id: process.id,
-                      panel: "information",
-                    })
-                  }
-                >
-                  実行情報 <span aria-hidden="true">›</span>
-                </button>
+                <details class="configuration" key={process.id}>
+                  <summary>実行情報</summary>
+                  <dl>
+                    <dt>コマンド</dt>
+                    <dd>
+                      <code>
+                        {[process.program, ...process.args].join(" ")}
+                      </code>
+                    </dd>
+                    <dt>作業ディレクトリ</dt>
+                    <dd>
+                      <code>{process.cwd}</code>
+                    </dd>
+                    <dt>自動起動</dt>
+                    <dd>{process.autostart ? "有効" : "無効"}</dd>
+                    <dt>PID</dt>
+                    <dd>{process.pid ?? "—"}</dd>
+                    <dt>実行番号</dt>
+                    <dd>{process.run_id ?? "—"}</dd>
+                    <dt>ID</dt>
+                    <dd>
+                      <code>{process.id}</code>
+                    </dd>
+                  </dl>
+                </details>
                 <div class="log-heading">
                   <h3>出力ログ</h3>
                   <label>
@@ -438,33 +486,6 @@ function App() {
                   ログはこの管理サービスの稼働中、上限付きで保持されます。
                 </p>
               </div>
-              <section
-                class="configuration"
-                aria-label="実行情報"
-                hidden={!information}
-              >
-                <h3>実行情報</h3>
-                <dl>
-                  <dt>コマンド</dt>
-                  <dd>
-                    <code>{[process.program, ...process.args].join(" ")}</code>
-                  </dd>
-                  <dt>作業ディレクトリ</dt>
-                  <dd>
-                    <code>{process.cwd}</code>
-                  </dd>
-                  <dt>自動起動</dt>
-                  <dd>{process.autostart ? "有効" : "無効"}</dd>
-                  <dt>PID</dt>
-                  <dd>{process.pid ?? "—"}</dd>
-                  <dt>実行番号</dt>
-                  <dd>{process.run_id ?? "—"}</dd>
-                  <dt>ID</dt>
-                  <dd>
-                    <code>{process.id}</code>
-                  </dd>
-                </dl>
-              </section>
             </>
           ) : (
             <div class="welcome">
