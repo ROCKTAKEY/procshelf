@@ -1,4 +1,5 @@
 import { render } from "preact";
+import { confirmAction } from "./confirm-action";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   canStart,
@@ -169,10 +170,7 @@ function App() {
 
   async function act(action: Action, target: Process) {
     if (!snapshot || pending || !connected) return;
-    if (
-      action === "kill" &&
-      !confirm(`${target.name} と配下のプロセスを強制終了しますか？`)
-    )
+    if (!confirmAction(action, target.name, (message) => confirm(message)))
       return;
     setPending(true);
     setError(null);
