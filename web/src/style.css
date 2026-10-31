@@ -216,7 +216,7 @@ pre {
 }
 .actions {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   flex-wrap: wrap;
   padding: 16px 24px 4px;
   gap: 10px;
@@ -239,7 +239,7 @@ pre {
   width: 1px;
   height: 20px;
   background: var(--line);
-  margin: 6px 4px 0;
+  margin: 0 4px 6px;
 }
 .action-icon {
   width: 16px;
