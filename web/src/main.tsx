@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   canStart,
   logsSchema,
@@ -8,6 +8,8 @@ import {
   stateLabels,
 } from "./protocol";
 import type { Action, Logs, Process, Snapshot } from "./protocol";
+import { parentScreen } from "./navigation";
+import { useNavigation } from "./use-navigation";
 import "./style.css";
 
 async function json(url: string, options?: RequestInit): Promise<unknown> {
@@ -52,16 +54,40 @@ function ActionIcon({ action }: { action: Action }) {
 function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connected, setConnected] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const { screen, mobile, navigate, back } = useNavigation(() => {
+    if (previousLog.current && logPane.current?.getClientRects().length)
+      logPositions.current.set(previousLog.current, logPane.current.scrollTop);
+  });
+  const [lastSelected, setLastSelected] = useState<string | null>(null);
+  const selected = screen.kind === "process" ? screen.id : lastSelected;
+  const information =
+    screen.kind === "process" && screen.panel === "information";
+  const showingProcess = !mobile || screen.kind === "process";
   const [filter, setFilter] = useState("");
   const [logs, setLogs] = useState<Logs | null>(null);
   const [logError, setLogError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [follow, setFollow] = useState(true);
+  const [follow, setFollow] = useState(
+    () => !matchMedia("(max-width: 640px)").matches,
+  );
+  useEffect(() => {
+    if (mobile) setFollow(false);
+  }, [mobile]);
   const token = useRef("");
   const logPane = useRef<HTMLPreElement>(null);
   const process = snapshot?.processes.find((p) => p.id === selected) ?? null;
+  const logPositions = useRef(new Map<string, number>());
+  const previousLog = useRef<string | null>(null);
+  const listPane = useRef<HTMLElement>(null);
+  const listPosition = useRef(0);
+
+  useLayoutEffect(() => {
+    if (logPane.current && selected && !information && showingProcess)
+      logPane.current.scrollTop = logPositions.current.get(selected) ?? 0;
+    previousLog.current = !information && showingProcess ? selected : null;
+    if (listPane.current) listPane.current.scrollTop = listPosition.current;
+  }, [selected, information, showingProcess]);
 
   useEffect(() => {
     let disposed = false;
@@ -108,10 +134,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (snapshot && !snapshot.processes.some((p) => p.id === selected)) {
-      setSelected(snapshot.processes[0]?.id ?? null);
+    if (!snapshot) return;
+    if (screen.kind === "process") {
+      if (snapshot.processes.some((p) => p.id === screen.id))
+        setLastSelected(screen.id);
+      else navigate({ kind: "list" }, true);
+    } else if (!snapshot.processes.some((p) => p.id === lastSelected)) {
+      setLastSelected(snapshot.processes[0]?.id ?? null);
     }
-  }, [snapshot, selected]);
+  }, [snapshot, screen, lastSelected]);
 
   useEffect(() => {
     setLogs(null);
@@ -142,8 +173,9 @@ function App() {
   }, [selected, connected]);
 
   useEffect(() => {
-    if (follow && logPane.current)
-      logPane.current.scrollTop = logPane.current.scrollHeight;
+    if (!follow || !logPane.current || information || !showingProcess) return;
+    if (mobile) logPane.current.scrollIntoView({ block: "end" });
+    else logPane.current.scrollTop = logPane.current.scrollHeight;
   }, [logs, follow]);
 
   async function act(action: Action, target: Process) {
@@ -227,8 +259,15 @@ function App() {
           管理サービスを終了しています。配下の停止完了を待っています。
         </div>
       )}
-      <div class="workspace">
-        <aside class="shelf">
+      <div class={`workspace ${mobile ? "mobile" : "desktop"}`}>
+        <aside
+          class="shelf"
+          hidden={mobile && screen.kind !== "list"}
+          ref={listPane}
+          onScroll={(e) => {
+            listPosition.current = e.currentTarget.scrollTop;
+          }}
+        >
           <div class="section-heading">
             <h2>プロセスを選択</h2>
             <span class="count">{snapshot?.processes.length ?? "—"}</span>
@@ -247,7 +286,10 @@ function App() {
                 key={p.id}
                 class={`process-row ${selected === p.id ? "selected" : ""}`}
                 aria-current={selected === p.id ? "true" : undefined}
-                onClick={() => setSelected(p.id)}
+                onClick={() => {
+                  if (selected !== p.id) setFollow(!mobile);
+                  navigate({ kind: "process", id: p.id, panel: "operations" });
+                }}
               >
                 <span class="process-label">
                   <span class="process-name">{p.name}</span>
@@ -281,7 +323,20 @@ function App() {
             </p>
           )}
         </aside>
-        <section class="detail" aria-label="プロセスの詳細">
+        <section
+          class="detail"
+          aria-label="プロセスの詳細"
+          hidden={!showingProcess}
+        >
+          {mobile && screen.kind === "process" && (
+            <button
+              class="back-link"
+              onClick={() => back(parentScreen(screen))}
+            >
+              <span aria-hidden="true">‹</span>{" "}
+              {information ? "操作・ログへ戻る" : "プロセス一覧へ戻る"}
+            </button>
+          )}
           {process ? (
             <>
               <div class="detail-heading">
@@ -290,51 +345,34 @@ function App() {
                   {stateLabels[process.state]}
                 </span>
               </div>
-              <div class="actions">
-                {active ? (
+              {!mobile && (
+                <nav class="detail-tabs" aria-label="詳細表示">
                   <button
-                    class="primary"
-                    disabled={busy || process.state === "stopping"}
-                    onClick={() => void act("stop", process)}
+                    aria-current={!information ? "page" : undefined}
+                    onClick={() =>
+                      navigate({
+                        kind: "process",
+                        id: process.id,
+                        panel: "operations",
+                      })
+                    }
                   >
-                    <ActionIcon action="stop" />
-                    <span>
-                      {process.state === "stopping" ? "停止処理中" : "停止"}
-                    </span>
+                    操作・ログ
                   </button>
-                ) : (
                   <button
-                    class="primary"
-                    disabled={busy || !canStart(process.state, process.removed)}
-                    onClick={() => void act("start", process)}
+                    aria-current={information ? "page" : undefined}
+                    onClick={() =>
+                      navigate({
+                        kind: "process",
+                        id: process.id,
+                        panel: "information",
+                      })
+                    }
                   >
-                    <ActionIcon action="start" />
-                    <span>起動</span>
+                    実行情報
                   </button>
-                )}
-                {active && (
-                  <>
-                    <button
-                      disabled={
-                        busy || process.state === "stopping" || process.removed
-                      }
-                      onClick={() => void act("restart", process)}
-                    >
-                      <ActionIcon action="restart" />
-                      <span>再起動</span>
-                    </button>
-                    <span class="action-separator" aria-hidden="true" />
-                    <button
-                      class="danger"
-                      disabled={busy}
-                      onClick={() => void act("kill", process)}
-                    >
-                      <ActionIcon action="kill" />
-                      <span>強制終了</span>
-                    </button>
-                  </>
-                )}
-              </div>
+                </nav>
+              )}
               {process.config_pending && (
                 <p class="inline-note">
                   設定変更あり。表示は次回起動の設定です。再起動で適用します。
@@ -348,27 +386,130 @@ function App() {
               {process.outcome && (
                 <p class="outcome">終了・診断: {process.outcome}</p>
               )}
-              <details class="configuration" key={process.id}>
-                <summary>
-                  <span>コマンド・実行情報</span>
-                  <span class="disclosure-open" aria-hidden="true">
-                    開く ＋
-                  </span>
-                  <span class="disclosure-close" aria-hidden="true">
-                    閉じる −
-                  </span>
-                </summary>
+              <div class="operations" hidden={information}>
+                <div class="actions">
+                  {active ? (
+                    <button
+                      class="primary"
+                      disabled={busy || process.state === "stopping"}
+                      onClick={() => void act("stop", process)}
+                    >
+                      <ActionIcon action="stop" />
+                      <span>
+                        {process.state === "stopping" ? "停止処理中" : "停止"}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      class="primary"
+                      disabled={
+                        busy || !canStart(process.state, process.removed)
+                      }
+                      onClick={() => void act("start", process)}
+                    >
+                      <ActionIcon action="start" />
+                      <span>起動</span>
+                    </button>
+                  )}
+                  {active && (
+                    <>
+                      <button
+                        disabled={
+                          busy ||
+                          process.state === "stopping" ||
+                          process.removed
+                        }
+                        onClick={() => void act("restart", process)}
+                      >
+                        <ActionIcon action="restart" />
+                        <span>再起動</span>
+                      </button>
+                      <span class="action-separator" aria-hidden="true" />
+                      <button
+                        class="danger"
+                        disabled={busy}
+                        onClick={() => void act("kill", process)}
+                      >
+                        <ActionIcon action="kill" />
+                        <span>強制終了</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+                {mobile && (
+                  <button
+                    class="information-link"
+                    onClick={() =>
+                      navigate({
+                        kind: "process",
+                        id: process.id,
+                        panel: "information",
+                      })
+                    }
+                  >
+                    実行情報 <span aria-hidden="true">›</span>
+                  </button>
+                )}
+                <div class="log-heading">
+                  <h3>出力ログ</h3>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={follow}
+                      onChange={(e) => setFollow(e.currentTarget.checked)}
+                    />
+                    末尾を追尾
+                  </label>
+                </div>
+                {logError && (
+                  <p class="inline-note" role="status">
+                    {logError}
+                  </p>
+                )}
+                {!!logs?.discarded && (
+                  <p class="inline-note">
+                    保持上限により、古いログ {logs.discarded}{" "}
+                    件を省略しています。
+                  </p>
+                )}
+                <pre
+                  class="logs"
+                  ref={logPane}
+                  onScroll={(e) => {
+                    if (previousLog.current)
+                      logPositions.current.set(
+                        previousLog.current,
+                        e.currentTarget.scrollTop,
+                      );
+                  }}
+                  aria-label="プロセスの出力ログ"
+                  tabIndex={0}
+                >
+                  {logs?.entries.length ? (
+                    logs.entries.map((e) => (
+                      <span key={e.seq} class={`log-entry ${e.stream}`}>
+                        <span class="log-meta">
+                          {new Date(e.time_ms).toLocaleTimeString()} · #
+                          {e.run_id} · {e.stream}
+                        </span>
+                        <span class="log-text">{e.text}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span class="empty-log">出力を待っています。</span>
+                  )}
+                </pre>
+                <p class="footnote">
+                  ログはこの管理サービスの稼働中、上限付きで保持されます。
+                </p>
+              </div>
+              <section
+                class="configuration"
+                aria-label="実行情報"
+                hidden={!information}
+              >
+                <h3>実行情報</h3>
                 <dl>
-                  <dt>ID</dt>
-                  <dd>
-                    <code>{process.id}</code>
-                  </dd>
-                  <dt>PID</dt>
-                  <dd>{process.pid ?? "—"}</dd>
-                  <dt>実行番号</dt>
-                  <dd>{process.run_id ?? "—"}</dd>
-                  <dt>自動起動</dt>
-                  <dd>{process.autostart ? "有効" : "無効"}</dd>
                   <dt>コマンド</dt>
                   <dd>
                     <code>{[process.program, ...process.args].join(" ")}</code>
@@ -377,52 +518,18 @@ function App() {
                   <dd>
                     <code>{process.cwd}</code>
                   </dd>
+                  <dt>自動起動</dt>
+                  <dd>{process.autostart ? "有効" : "無効"}</dd>
+                  <dt>PID</dt>
+                  <dd>{process.pid ?? "—"}</dd>
+                  <dt>実行番号</dt>
+                  <dd>{process.run_id ?? "—"}</dd>
+                  <dt>ID</dt>
+                  <dd>
+                    <code>{process.id}</code>
+                  </dd>
                 </dl>
-              </details>
-              <div class="log-heading">
-                <h3>出力ログ</h3>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={follow}
-                    onChange={(e) => setFollow(e.currentTarget.checked)}
-                  />
-                  末尾を追尾
-                </label>
-              </div>
-              {logError && (
-                <p class="inline-note" role="status">
-                  {logError}
-                </p>
-              )}
-              {!!logs?.discarded && (
-                <p class="inline-note">
-                  保持上限により、古いログ {logs.discarded} 件を省略しています。
-                </p>
-              )}
-              <pre
-                class="logs"
-                ref={logPane}
-                aria-label="プロセスの出力ログ"
-                tabIndex={0}
-              >
-                {logs?.entries.length ? (
-                  logs.entries.map((e) => (
-                    <span key={e.seq} class={`log-entry ${e.stream}`}>
-                      <span class="log-meta">
-                        {new Date(e.time_ms).toLocaleTimeString()} · #{e.run_id}{" "}
-                        · {e.stream}
-                      </span>
-                      <span class="log-text">{e.text}</span>
-                    </span>
-                  ))
-                ) : (
-                  <span class="empty-log">出力を待っています。</span>
-                )}
-              </pre>
-              <p class="footnote">
-                ログはこの管理サービスの稼働中、上限付きで保持されます。
-              </p>
+              </section>
             </>
           ) : (
             <div class="welcome">

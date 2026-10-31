@@ -274,45 +274,21 @@ pre {
   background: var(--surface);
 }
 .configuration {
-  border-top: 1px solid var(--line);
+  padding: 12px;
 }
-.configuration summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  margin: 6px 12px;
-  padding: 6px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--muted);
+.configuration h3 {
+  font-size: 15px;
+  margin-bottom: 12px;
 }
-.configuration summary::-webkit-details-marker {
-  display: none;
-}
-.disclosure-open,
-.disclosure-close {
-  color: var(--focus);
-  white-space: nowrap;
-}
-.disclosure-close,
-.configuration[open] .disclosure-open {
-  display: none;
-}
-.configuration[open] .disclosure-close {
-  display: inline;
-}
-.configuration summary:hover {
-  background: var(--subtle);
+.configuration dl {
+  padding: 0;
 }
 .configuration dl {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 4px 16px;
   margin: 0;
-  padding: 4px 12px 8px;
+  padding: 0;
   font-size: 12px;
 }
 .configuration dt {
@@ -452,10 +428,6 @@ input[type="checkbox"] {
   .detail-heading {
     padding-top: 8px;
   }
-  .configuration summary {
-    min-height: 44px;
-    align-items: center;
-  }
   .log-heading {
     min-height: 44px;
   }
@@ -481,8 +453,7 @@ input[type="checkbox"] {
 }
 @media (pointer: coarse) {
   .process-row,
-  .search,
-  .configuration summary {
+  .search {
     min-height: 44px;
   }
 }
@@ -502,4 +473,132 @@ input[type="checkbox"] {
     --red: #df9b91;
     --amber: #d0b77d;
   }
+}
+
+[hidden] {
+  display: none !important;
+}
+.operations {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.detail-tabs {
+  display: flex;
+  gap: 16px;
+  margin: 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.detail-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 0 6px;
+}
+.detail-tabs button[aria-current] {
+  color: var(--ink);
+  border-bottom-color: var(--focus);
+}
+.back-link,
+.information-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--focus);
+  font-size: 13px;
+}
+.back-link {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  min-height: 40px;
+}
+.information-link {
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  margin: 4px 12px 12px;
+  padding: 6px 8px;
+  min-height: 36px;
+}
+.desktop .shelf {
+  position: sticky;
+  top: 0;
+  height: calc(100dvh - 41px);
+  overflow-y: auto;
+}
+.desktop .process-row {
+  display: block;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+.desktop .process-row.selected {
+  box-shadow: none;
+  background: var(--selected);
+}
+.desktop .process-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.desktop .process-name {
+  font-size: 13px;
+  font-weight: 400;
+}
+.desktop .selected .process-name {
+  font-weight: 600;
+}
+.desktop .process-label .status {
+  order: -1;
+  font-size: 0;
+  gap: 0;
+}
+.desktop .row-chevron {
+  display: none;
+}
+.desktop .process-label .status.failed,
+.desktop .process-label .status.unknown {
+  color: var(--red);
+}
+.desktop .card-note {
+  display: block;
+  margin-left: 14px;
+}
+.mobile .shelf nav {
+  max-height: none;
+  overflow: visible;
+}
+.mobile .process-row {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  margin: 0;
+  padding: 10px 4px;
+  background: var(--surface);
+  box-shadow: none;
+}
+.mobile .process-row:hover {
+  background: var(--subtle);
+}
+.mobile .configuration dl {
+  display: block;
+}
+.mobile .configuration dt {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.mobile .configuration dd {
+  font-size: 14px;
+}
+.mobile .logs {
+  height: auto;
+  max-height: none;
+  min-height: 240px;
+  overflow: visible;
 }
