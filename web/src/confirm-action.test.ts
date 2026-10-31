@@ -19,7 +19,7 @@ test("interrupting actions require approval naming the target and operation", as
     assert.equal(prompts.length, 1);
     assert.equal(prompts[0].title, `API server を${label}しますか？`);
     assert.equal(prompts[0].label, `${label}する`);
-    assert.ok(prompts[0].effects[0].includes("配下"));
+    assert.ok(prompts[0].effects[0].includes("子プロセス"));
     assert.equal(prompts[0].effects.length, action === "stop" ? 1 : 2);
     assert.equal(prompts[0].sequence, action === "restart");
     assert.equal(await confirmAction(action, "API server", () => true), true);

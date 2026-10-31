@@ -14,15 +14,18 @@ export async function confirmAction(
 ): Promise<boolean> {
   if (action === "start") return true;
   const operations = {
-    stop: { verb: "停止", effects: ["配下のプロセスも停止します。"] },
+    stop: { verb: "停止", effects: [`${name} とその子プロセスを停止します。`] },
     restart: {
       verb: "再起動",
-      effects: ["配下のプロセスも停止", "設定に従って起動"],
+      effects: [
+        `${name} とその子プロセスを停止します。`,
+        `停止が完了したら、${name} を起動します。`,
+      ],
     },
     kill: {
       verb: "強制終了",
       effects: [
-        "配下のプロセスも強制終了します。",
+        `${name} とその子プロセスを強制終了します。`,
         "終了処理を待たずに停止します。",
       ],
     },
