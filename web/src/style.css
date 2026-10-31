@@ -178,11 +178,13 @@ pre {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px 0;
+  padding: 16px 12px 0;
+  flex-wrap: wrap;
 }
 .detail-heading h2 {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .status {
@@ -217,7 +219,7 @@ pre {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 10px 12px 4px;
 }
 .actions button {
   display: inline-flex;
@@ -271,16 +273,6 @@ pre {
   border-color: var(--red);
   background: var(--surface);
 }
-.configuration {
-  padding: 12px;
-}
-.configuration h3 {
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-.configuration dl {
-  padding: 0;
-}
 .configuration dl {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -304,12 +296,12 @@ pre {
   gap: 12px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  padding: 4px 12px;
-  background: var(--subtle);
+  padding: 10px 12px;
+  background: var(--surface);
 }
 .log-heading h3 {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 .log-heading label {
   display: flex;
@@ -327,9 +319,9 @@ input[type="checkbox"] {
   overflow: visible;
   background: #181a1c;
   color: #dce0e3;
-  padding: 8px 12px;
-  font-size: 12px;
-  line-height: 1.5;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -553,7 +545,7 @@ input[type="checkbox"] {
   border: 0;
   border-radius: 0;
   margin: 0;
-  padding: 6px 8px;
+  padding: 10px 8px;
   box-shadow: none;
   background: var(--surface);
 }
@@ -569,7 +561,7 @@ input[type="checkbox"] {
   gap: 8px;
 }
 .desktop .process-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   min-width: 0;
 }
@@ -584,15 +576,14 @@ input[type="checkbox"] {
 }
 .configuration {
   padding: 0;
-  margin: 4px 12px 12px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
+  margin: 2px 12px 20px;
 }
 .configuration summary {
   cursor: pointer;
   color: var(--focus);
-  padding: 6px 8px;
-  font-size: 13px;
+  padding: 6px 0;
+  width: fit-content;
+  font-size: 12px;
 }
 .configuration summary:hover {
   background: var(--subtle);
@@ -602,7 +593,7 @@ input[type="checkbox"] {
   outline-offset: -2px;
 }
 .configuration dl {
-  padding: 8px 12px 12px;
+  padding: 8px 0 0;
 }
 
 .section-heading .sidebar-toggle {
