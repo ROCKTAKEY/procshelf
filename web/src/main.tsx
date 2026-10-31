@@ -241,11 +241,6 @@ function App() {
             value={filter}
             onInput={(e) => setFilter(e.currentTarget.value)}
           />
-          <div class="process-columns" aria-hidden="true">
-            <span>名前</span>
-            <span>状態</span>
-            <span />
-          </div>
           <nav aria-label="登録されたプロセス">
             {filtered.map((p) => (
               <button
@@ -254,8 +249,12 @@ function App() {
                 aria-current={selected === p.id ? "true" : undefined}
                 onClick={() => setSelected(p.id)}
               >
-                <span class="process-name">{p.name}</span>
-                <span class={`status ${p.state}`}>{stateLabels[p.state]}</span>
+                <span class="process-label">
+                  <span class="process-name">{p.name}</span>
+                  <span class={`status ${p.state}`}>
+                    {stateLabels[p.state]}
+                  </span>
+                </span>
                 <svg
                   class="row-chevron"
                   viewBox="0 0 24 24"
@@ -351,7 +350,7 @@ function App() {
               )}
               <details class="configuration" key={process.id}>
                 <summary>
-                  <span>実行情報・設定</span>
+                  <span>コマンド・実行情報</span>
                   <span class="disclosure-open" aria-hidden="true">
                     開く ＋
                   </span>

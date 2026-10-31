@@ -120,19 +120,6 @@ pre {
 .search::placeholder {
   color: var(--muted);
 }
-.process-columns,
-.process-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 6em 14px;
-  font-size: 12px;
-}
-.process-columns {
-  gap: 12px;
-  padding: 0 12px 4px;
-  margin: 0 8px;
-  font-size: 12px;
-  color: var(--muted);
-}
 .shelf nav {
   padding: 0 8px 8px;
 }
@@ -142,6 +129,8 @@ pre {
   color: var(--focus);
 }
 .process-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
   align-items: center;
   gap: 2px 12px;
   width: 100%;
@@ -161,8 +150,15 @@ pre {
   background: var(--selected);
   box-shadow: inset 3px 0 var(--focus);
 }
+.process-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
 .process-name {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .card-note {
@@ -187,7 +183,7 @@ pre {
   padding: 8px 12px 0;
 }
 .detail-heading h2 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
