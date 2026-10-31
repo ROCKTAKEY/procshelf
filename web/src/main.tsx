@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { confirmAction } from "./confirm-action";
+import { useConfirmationModal } from "./confirmation-modal";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   canStart,
@@ -52,6 +53,7 @@ function ActionIcon({ action }: { action: Action }) {
 }
 
 function App() {
+  const confirmation = useConfirmationModal();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connected, setConnected] = useState(false);
   const { screen, mobile, navigate, back } = useNavigation();
@@ -170,11 +172,11 @@ function App() {
 
   async function act(action: Action, target: Process) {
     if (!snapshot || pending || !connected) return;
-    if (!confirmAction(action, target.name, (message) => confirm(message)))
-      return;
     setPending(true);
-    setError(null);
+    const generation = snapshot.config_generation;
     try {
+      if (!(await confirmAction(action, target.name, confirmation.ask))) return;
+      setError(null);
       await json(`/api/processes/${encodeURIComponent(target.id)}/actions`, {
         method: "POST",
         headers: {
@@ -184,7 +186,7 @@ function App() {
         body: JSON.stringify({
           action,
           expected_run_id: target.run_id,
-          config_generation: snapshot.config_generation,
+          config_generation: generation,
         }),
       });
     } catch (e) {
@@ -548,6 +550,7 @@ function App() {
           )}
         </section>
       </div>
+      {confirmation.modal}
     </main>
   );
 }
