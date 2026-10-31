@@ -675,6 +675,7 @@ input[type="checkbox"] {
   background: #10182099;
 }
 .confirmation-modal h2 {
+  overflow-wrap: anywhere;
   font-size: 22px;
   line-height: 1.3;
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { confirmAction } from "./confirm-action.ts";
+import { confirmAction, type Confirmation } from "./confirm-action.ts";
 
 test("interrupting actions require approval naming the target and operation", async () => {
   for (const [action, label] of [
@@ -8,7 +8,7 @@ test("interrupting actions require approval naming the target and operation", as
     ["restart", "再起動"],
     ["kill", "強制終了"],
   ] as const) {
-    const prompts: string[] = [];
+    const prompts: Confirmation[] = [];
     assert.equal(
       await confirmAction(action, "API server", (message) => {
         prompts.push(message);
@@ -17,8 +17,9 @@ test("interrupting actions require approval naming the target and operation", as
       false,
     );
     assert.equal(prompts.length, 1);
-    assert.ok(prompts[0].includes("API server"));
-    assert.ok(prompts[0].includes(label));
+    assert.equal(prompts[0].title, `API server を${label}しますか？`);
+    assert.equal(prompts[0].label, `${label}する`);
+    assert.ok(prompts[0].message.includes("配下"));
     assert.equal(await confirmAction(action, "API server", () => true), true);
   }
 });

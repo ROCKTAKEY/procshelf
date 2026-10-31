@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
-type Request = {
-  message: string;
-  label: string;
+import type { Confirmation } from "./confirm-action";
+
+type Request = Confirmation & {
   resolve: (approved: boolean) => void;
 };
 
@@ -30,7 +30,7 @@ function ConfirmationModal({
         finish(false);
       }}
     >
-      <h2 id="confirmation-title">{request.label}前に確認</h2>
+      <h2 id="confirmation-title">{request.title}</h2>
       <p id="confirmation-message">{request.message}</p>
       <div class="confirmation-actions">
         <button autoFocus onClick={() => finish(false)}>
@@ -46,8 +46,8 @@ function ConfirmationModal({
 
 export function useConfirmationModal() {
   const [request, setRequest] = useState<Request | null>(null);
-  function ask(message: string, label: string): Promise<boolean> {
-    return new Promise((resolve) => setRequest({ message, label, resolve }));
+  function ask(confirmation: Confirmation): Promise<boolean> {
+    return new Promise((resolve) => setRequest({ ...confirmation, resolve }));
   }
   function finish(approved: boolean) {
     request?.resolve(approved);

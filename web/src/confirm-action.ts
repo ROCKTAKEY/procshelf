@@ -1,20 +1,32 @@
 import type { Action } from "./protocol";
 
+export type Confirmation = {
+  title: string;
+  message: string;
+  label: string;
+};
+
 export async function confirmAction(
   action: Action,
   name: string,
-  ask: (message: string, label: string) => boolean | Promise<boolean>,
+  ask: (confirmation: Confirmation) => boolean | Promise<boolean>,
 ): Promise<boolean> {
   if (action === "start") return true;
-  const messages = {
-    stop: `${name} と配下のプロセスを停止しますか？`,
-    restart: `${name} と配下のプロセスを停止して、再起動しますか？`,
-    kill: `${name} と配下のプロセスを強制終了しますか？`,
+  const operations = {
+    stop: { verb: "停止", message: "配下のプロセスも停止します。" },
+    restart: {
+      verb: "再起動",
+      message: "配下のプロセスも停止してから、設定に従って起動し直します。",
+    },
+    kill: {
+      verb: "強制終了",
+      message: "配下のプロセスも強制終了します。終了処理を待たずに停止します。",
+    },
   };
-  const labels = {
-    stop: "停止する",
-    restart: "再起動する",
-    kill: "強制終了する",
-  };
-  return ask(messages[action], labels[action]);
+  const { verb, message } = operations[action];
+  return ask({
+    title: `${name} を${verb}しますか？`,
+    message,
+    label: `${verb}する`,
+  });
 }
