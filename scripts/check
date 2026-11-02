@@ -2,6 +2,10 @@
 set -eu
 cd "$(dirname "$0")/.."
 exec ./scripts/dev sh -c '
+  set -eu
+  actionlint
+  node scripts/sync-versions.mjs --check
+  node --test scripts/sync-versions.test.mjs
   cd web
   npm ci --ignore-scripts
   npm run check

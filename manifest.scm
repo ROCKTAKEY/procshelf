@@ -3,6 +3,7 @@
        "rust:cargo"
        "rust:tools"
        "cargo-audit"
+       "actionlint"
        "gcc-toolchain"
        "nss-certs"
        "node"

@@ -110,6 +110,28 @@ Guix 環境で npm のロック済み依存をインストールし、TypeScript
 
 TDD の小さな仕様単位で赤・緑・リファクタリングを進める。状態遷移、設定の置き換え保存、子孫の回収、競合する操作、不正な API 要求を回帰テストの対象とする。
 
+## CI とリリース
+
+[GitHub Actions](https://github.com/ROCKTAKEY/procshelf/actions/workflows/ci.yml) は、PR と `main` の更新時に [channels.scm](channels.scm) の Guix 環境で全検査とリリースビルドを実行する。手動実行も可能。
+
+`main` の検査に成功すると [tagpr](https://github.com/Songmu/tagpr) がリリース PR を作成・更新する。リリース PR を確認してマージすると、マージ後の検査を経て `vX.Y.Z` タグと GitHub Release を公開する。配布はソースコード形式。
+
+リリース番号は `Cargo.toml` の `package.version` で管理し、[scripts/sync-versions.mjs](scripts/sync-versions.mjs) が Cargo のロックファイルと Web パッケージへ同期する。リリース PR で番号を手動変更するときは、変更後に次を実行して生成差分もコミットする。
+
+```sh
+./scripts/dev node scripts/sync-versions.mjs
+```
+
+tagpr は標準の `GITHUB_TOKEN` を利用する。リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする必要がある。自動作成した PR では通常の PR イベントによる検査が起動しないため、ワークフローがそのブランチの CI を明示的に起動する。PR の自動承認・自動マージは行わない。
+
+Actions の依存は [.github/workflows/actions.lock](.github/workflows/actions.lock) で固定し、CI で検証する。Dependabot が週次で更新 PR を作成する。ワークフローに Action を追加・変更したときは、[公式のロックツール](https://github.com/github/gh-actions-lock) で再生成し、差分を確認する。
+
+```sh
+gh extension install github/gh-actions-lock --pin v0.4.1
+gh actions-lock
+gh actions-lock --verify
+```
+
 ## 依存の選定と更新
 
 - Rust: Tokio（非同期 I/O・プロセス）、Axum（HTTP・SSE）、Serde/serde_json/TOML（境界での解析）、notify（ファイル監視）、nix（Linux 操作）、tokio-stream/futures-util（配信）、subtle（アクセスキーの定数時間比較）。
