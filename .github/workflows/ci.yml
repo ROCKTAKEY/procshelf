@@ -69,6 +69,8 @@ jobs:
               ./target/release-build/release/procshelf --help
 
   tagpr:
+    outputs:
+      tag: ${{ steps.tagpr.outputs.tag }}
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
@@ -106,3 +108,13 @@ jobs:
           number=$(printf '%s' "$RELEASE_PR" | jq -r .number)
           branch=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)
           gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
+
+
+  release:
+    needs: tagpr
+    if: needs.tagpr.outputs.tag != ''
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tagpr.outputs.tag }}

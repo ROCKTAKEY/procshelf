@@ -4,6 +4,20 @@ Linux 上のコマンドを `config.toml` に登録し、PC・スマホの Web G
 
 設計と仕様は [docs/design.md](docs/design.md) にまとめている。初期版は、信頼できる利用者が localhost または VPN 内で使う、フォアグラウンドの非対話型コマンド向け。
 
+## 配布バイナリで起動
+
+[GitHub Releases](https://github.com/ROCKTAKEY/procshelf/releases) から、Linux x86_64 用の `procshelf-vX.Y.Z-x86_64-unknown-linux-musl.tar.gz` と同名の `.sha256` ファイルをダウンロードする。musl を静的リンクし、GUI を内蔵しているため、Guix・Rust・Node.js のインストールは不要。
+
+```sh
+sha256sum --check procshelf-vX.Y.Z-x86_64-unknown-linux-musl.tar.gz.sha256
+tar -xzf procshelf-vX.Y.Z-x86_64-unknown-linux-musl.tar.gz
+cd procshelf-vX.Y.Z-x86_64-unknown-linux-musl
+cp config.example.toml config.toml
+./procshelf --config config.toml
+```
+
+`vX.Y.Z` はダウンロードしたバージョンに置き換える。管理対象のコマンドは実行先に別途用意する。
+
 ## Guix でビルド・起動
 
 開発ツールは [manifest.scm](manifest.scm) で管理する。`scripts/dev` はリポジトリを作業ディレクトリにし、ネットワークを共有する Guix コンテナ内で指定したコマンドを実行する。
@@ -116,7 +130,7 @@ TDD の小さな仕様単位で赤・緑・リファクタリングを進める�
 
 CI は GHA の `parallel` でツールの準備と依存ロックの検証を並列実行する。GUI をビルドした後は、フロントエンド検査、整形・バージョン整合性、Rust・実サービスの検査、リリースビルドを並列実行する。Rust は GUI をバイナリに埋め込むため、GUI の生成完了後にコンパイルする。リリースビルドには別の出力ディレクトリを使い、Cargo のビルドロックによる待ち合わせを避ける。
 
-`main` の検査に成功すると [tagpr](https://github.com/Songmu/tagpr) がリリース PR を作成・更新する。リリース PR を確認してマージすると、マージ後の検査を経て `vX.Y.Z` タグと GitHub Release を公開する。配布はソースコード形式。
+`main` の検査に成功すると [tagpr](https://github.com/Songmu/tagpr) がリリース PR を作成・更新する。リリース PR を確認してマージすると、マージ後の検査を経て `vX.Y.Z` タグと GitHub Release を公開する。Linux x86_64 向けの静的リンクバイナリをビルドし、実サービスのテストに成功すると、設定例・ライセンス・README を含むアーカイブと SHA-256 チェックサムを Release に添付する。
 
 リリース番号は `Cargo.toml` の `package.version` で管理し、[scripts/sync-versions.mjs](scripts/sync-versions.mjs) が Cargo のロックファイルと Web パッケージへ同期する。リリース PR で番号を手動変更するときは、変更後に次を実行して生成差分もコミットする。
 
@@ -125,6 +139,8 @@ CI は GHA の `parallel` でツールの準備と依存ロックの検証を並
 ```
 
 tagpr は標準の `GITHUB_TOKEN` を利用する。リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする必要がある。自動作成した PR では通常の PR イベントによる検査が起動しないため、ワークフローがそのブランチの CI を明示的に起動する。PR の自動承認・自動マージは行わない。
+
+[Release binaries](.github/workflows/release.yml) は tagpr が作成したタグを受け取り、そのタグのソースから配布物を生成する。既存リリースへの追加や失敗時の再実行には、Actions の「Release binaries」から対象タグを指定する。同名の配布物は上書きしない。
 
 Actions の依存は [.github/workflows/actions.lock](.github/workflows/actions.lock) で固定し、CI で検証する。Dependabot が週次で更新 PR を作成する。ワークフローに Action を追加・変更したときは、[公式のロックツール](https://github.com/github/gh-actions-lock) で再生成し、差分を確認する。
 

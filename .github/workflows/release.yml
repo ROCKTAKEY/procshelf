@@ -1,0 +1,95 @@
+name: Release binaries
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (for example v0.1.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  binary:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+    steps:
+      - name: Validate release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - parallel:
+          - uses: actions/setup-node@v7.1.0
+            with:
+              node-version: 26.12.1
+              cache: npm
+              cache-dependency-path: web/package-lock.json
+          - name: Set up static Rust build
+            run: |
+              rustup toolchain install 1.98.1 --profile minimal --target x86_64-unknown-linux-musl
+              rustup default 1.98.1
+              sudo apt-get update
+              sudo apt-get install --yes --no-install-recommends musl-tools
+      - name: Verify version and build GUI
+        run: |
+          version=$(sed -n '/^\[package\]/,/^\[/s/^version = "\([^"]*\)"/\1/p' Cargo.toml)
+          test "$RELEASE_TAG" = "v$version"
+          cd web
+          npm ci --ignore-scripts
+          npm run build
+      - name: Build and check static executable
+        run: |
+          cargo build --release --locked --target x86_64-unknown-linux-musl
+          binary=target/x86_64-unknown-linux-musl/release/procshelf
+          if readelf -l "$binary" | grep -q INTERP; then
+            echo "Unexpected dynamic loader" >&2
+            exit 1
+          fi
+          if readelf -d "$binary" | grep -q NEEDED; then
+            echo "Unexpected shared library dependency" >&2
+            exit 1
+          fi
+          "$binary" --help
+          mkdir -p target/debug
+          cp "$binary" target/debug/procshelf
+          timeout 60 node --test scripts/service.test.mjs
+      - name: Package and verify archive
+        run: |
+          package="procshelf-$RELEASE_TAG-x86_64-unknown-linux-musl"
+          mkdir -p "dist/$package"
+          install -m 755 target/x86_64-unknown-linux-musl/release/procshelf "dist/$package/"
+          cp LICENSE README.md config.example.toml "dist/$package/"
+          cd dist
+          tar -czf "$package.tar.gz" "$package"
+          sha256sum "$package.tar.gz" > "$package.tar.gz.sha256"
+          sha256sum --check "$package.tar.gz.sha256"
+          mkdir verify
+          tar -xzf "$package.tar.gz" -C verify
+          "./verify/$package/procshelf" --help
+      - name: Attach release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$RELEASE_TAG" dist/*.tar.gz dist/*.sha256 --repo "$GITHUB_REPOSITORY"
