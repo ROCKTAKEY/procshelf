@@ -4,4 +4,4 @@
     vPrefix = true
     changelog = true
     release = true
-    postVersionCommand = ./scripts/dev node scripts/sync-versions.mjs
+    postVersionCommand = node scripts/sync-versions.mjs

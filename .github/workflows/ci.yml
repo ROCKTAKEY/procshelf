@@ -15,34 +15,64 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Verify action dependencies
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - parallel:
+          - name: Verify action dependencies
+            env:
+              GH_TOKEN: ${{ github.token }}
+            run: |
+              gh extension install github/gh-actions-lock --pin v0.4.1
+              gh actions-lock --verify
+          - uses: actions/setup-node@v7.1.0
+            with:
+              node-version: 26.12.1
+              cache: npm
+              cache-dependency-path: web/package-lock.json
+          - name: Set up Rust
+            run: |
+              rustup toolchain install 1.98.1 --profile minimal --component clippy,rustfmt
+              rustup default 1.98.1
+      # Rust embeds these assets at compile time.
+      - name: Build GUI
+        working-directory: web
         run: |
-          gh extension install github/gh-actions-lock --pin v0.4.1
-          gh actions-lock --verify
-      - uses: PromyLOPh/guix-install-action@v1.6
-        with:
-          pullAfterInstall: false
-      - name: Select Guix channel
-        run: sudo /var/guix/profiles/per-user/root/current-guix/bin/guix pull -C channels.scm
-      - run: ./scripts/check
-      - name: Build release
-        run: |
-          ./scripts/dev cargo build --release --locked
-          ./target/release/procshelf --help
+          npm ci --ignore-scripts
+          npm run build
+      - parallel:
+          - name: Check frontend
+            working-directory: web
+            run: |
+              npm run check
+              npm test
+          - name: Check formatting and release metadata
+            run: |
+              cargo fmt --all -- --check
+              node scripts/sync-versions.mjs --check
+              node --test scripts/sync-versions.test.mjs
+          - name: Check backend and service
+            run: |
+              cargo clippy --locked --all-targets -- -D warnings
+              cargo test --locked
+              cargo build --locked
+              timeout 60 node --test scripts/service.test.mjs
+          - name: Build release
+            # A separate target directory avoids Cargo's shared build lock.
+            env:
+              CARGO_TARGET_DIR: target/release-build
+            run: |
+              cargo build --release --locked
+              ./target/release-build/release/procshelf --help
 
   tagpr:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
@@ -58,11 +88,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$GITHUB_SHA"
-      - uses: PromyLOPh/guix-install-action@v1.6
+      - uses: actions/setup-node@v7.1.0
         with:
-          pullAfterInstall: false
-      - name: Select Guix channel
-        run: sudo /var/guix/profiles/per-user/root/current-guix/bin/guix pull -C channels.scm
+          node-version: 26.12.1
+          package-manager-cache: false
       - uses: Songmu/tagpr@v1.21.4
         id: tagpr
         env:

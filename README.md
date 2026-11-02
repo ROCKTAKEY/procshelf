@@ -112,7 +112,9 @@ TDD の小さな仕様単位で赤・緑・リファクタリングを進める�
 
 ## CI とリリース
 
-[GitHub Actions](https://github.com/ROCKTAKEY/procshelf/actions/workflows/ci.yml) は、PR と `main` の更新時に [channels.scm](channels.scm) の Guix 環境で全検査とリリースビルドを実行する。手動実行も可能。
+[GitHub Actions](https://github.com/ROCKTAKEY/procshelf/actions/workflows/ci.yml) は、PR と `main` の更新時に Ubuntu 26.04 上で Node.js と Rust を用意し、全検査とリリースビルドを実行する。手動実行も可能。ローカル開発環境は [manifest.scm](manifest.scm) で管理する Guix 環境を利用する。
+
+CI は GHA の `parallel` でツールの準備と依存ロックの検証を並列実行する。GUI をビルドした後は、フロントエンド検査、整形・バージョン整合性、Rust・実サービスの検査、リリースビルドを並列実行する。Rust は GUI をバイナリに埋め込むため、GUI の生成完了後にコンパイルする。リリースビルドには別の出力ディレクトリを使い、Cargo のビルドロックによる待ち合わせを避ける。
 
 `main` の検査に成功すると [tagpr](https://github.com/Songmu/tagpr) がリリース PR を作成・更新する。リリース PR を確認してマージすると、マージ後の検査を経て `vX.Y.Z` タグと GitHub Release を公開する。配布はソースコード形式。
 
