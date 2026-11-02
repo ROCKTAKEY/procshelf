@@ -125,3 +125,7 @@ TDD の小さな仕様単位で赤・緑・リファクタリングを進める�
 ```
 
 `cargo audit` と `npm audit` は既知の脆弱性情報の確認であり、供給元の侵害や未知の問題がないことを保証するものではない。npm のインストールでは lifecycle scripts を実行しない構成を検証している。Rust の build scripts / proc macros はビルド時に実行されるため、依存更新時の確認対象に含める。
+
+## ライセンス
+
+Procshelf は GNU Affero General Public License version 3（AGPL-3.0-only）で提供します。全文は [LICENSE](LICENSE) を参照してください。
