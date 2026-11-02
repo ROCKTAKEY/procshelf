@@ -1,4 +1,5 @@
 import { render } from "preact";
+import { AuthenticationGate, AuthenticationRequired } from "./authentication";
 import { confirmAction } from "./confirm-action";
 import { useConfirmationModal } from "./confirmation-modal";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
@@ -15,6 +16,7 @@ import "./style.css";
 
 async function json(url: string, options?: RequestInit): Promise<unknown> {
   const response = await fetch(url, { ...options, cache: "no-store" });
+  if (response.status === 401) throw new AuthenticationRequired();
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);
     throw new Error(
@@ -52,7 +54,13 @@ function ActionIcon({ action }: { action: Action }) {
   );
 }
 
-function App() {
+function App({
+  onSignedOut,
+  onLogout,
+}: {
+  onSignedOut: () => void;
+  onLogout: () => Promise<void>;
+}) {
   const confirmation = useConfirmationModal();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connected, setConnected] = useState(false);
@@ -111,7 +119,11 @@ function App() {
           events?.close();
           if (!disposed) retry = setTimeout(connect, 1500);
         };
-      } catch {
+      } catch (error) {
+        if (error instanceof AuthenticationRequired) {
+          if (!disposed) onSignedOut();
+          return;
+        }
         if (!disposed) {
           setConnected(false);
           retry = setTimeout(connect, 1500);
@@ -152,7 +164,11 @@ function App() {
           setLogs(next);
           setLogError(null);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof AuthenticationRequired) {
+          if (!disposed) onSignedOut();
+          return;
+        }
         if (!disposed)
           setLogError("ログを取得できません。再接続を待っています。");
       }
@@ -190,6 +206,10 @@ function App() {
         }),
       });
     } catch (e) {
+      if (e instanceof AuthenticationRequired) {
+        onSignedOut();
+        return;
+      }
       setError(e instanceof Error ? e.message : "操作に失敗しました");
     } finally {
       setPending(false);
@@ -235,9 +255,14 @@ function App() {
     <main>
       <header class="masthead">
         <h1>Procshelf</h1>
-        <div class={`connection ${connected ? "online" : ""}`} role="status">
-          <span class="dot" />
-          {connected ? "接続中" : "再接続しています"}
+        <div class="header-session">
+          <div class={`connection ${connected ? "online" : ""}`} role="status">
+            <span class="dot" />
+            {connected ? "接続中" : "再接続しています"}
+          </div>
+          <button class="logout-button" onClick={() => void onLogout()}>
+            ログアウト
+          </button>
         </div>
       </header>
       {error && (
@@ -554,4 +579,11 @@ function App() {
     </main>
   );
 }
-render(<App />, document.getElementById("app")!);
+render(
+  <AuthenticationGate
+    renderApp={(onSignedOut, onLogout) => (
+      <App onSignedOut={onSignedOut} onLogout={onLogout} />
+    )}
+  />,
+  document.getElementById("app")!,
+);

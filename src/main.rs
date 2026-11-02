@@ -1,3 +1,4 @@
+use procshelf::authentication::{AccessKey, Authentication, random_token};
 use procshelf::{
     configuration::{
         Config,
@@ -5,7 +6,7 @@ use procshelf::{
     },
     processes::manager::Manager,
 };
-use std::{fs::OpenOptions, io::Read, os::unix::fs::OpenOptionsExt, path::PathBuf};
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt, path::PathBuf};
 
 // Each run starts this executable as a supervisor; a worker pool per run would scale with CPU count.
 #[tokio::main(flavor = "current_thread")]
@@ -57,11 +58,9 @@ async fn run() -> Result<(), String> {
         .await
         .map_err(|e| format!("cannot bind {}: {e}", config.listen))?;
     let listen = config.listen;
-    let mut bytes = [0u8; 32];
-    std::fs::File::open("/dev/urandom")
-        .and_then(|mut f| f.read_exact(&mut bytes))
-        .map_err(|e| format!("cannot create session token: {e}"))?;
-    let token = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let key_path = path.with_extension("procshelf.key");
+    let auth = Authentication::new(AccessKey::load_or_create(&key_path)?);
+    let token = random_token()?;
     let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .map_err(|e| e.to_string())?;
     let manager = Manager::with_lease(
@@ -76,7 +75,8 @@ async fn run() -> Result<(), String> {
             return Err(error);
         }
     };
-    let app = procshelf::web::router(manager.clone(), listen, token);
+    let app = procshelf::web::router(manager.clone(), listen, token, auth);
+    eprintln!("Access key file: {}", key_path.display());
     eprintln!("Procshelf listening on http://{listen}");
     let shutdown_manager = manager.clone();
     let result = axum::serve(listener, app)

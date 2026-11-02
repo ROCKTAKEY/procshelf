@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile, rename, rm, access } from "node:fs/promises";
+import {
+  mkdtemp,
+  writeFile,
+  rename,
+  rm,
+  access,
+  readFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
@@ -60,16 +67,32 @@ async function fixture(t, body) {
   const base = `http://127.0.0.1:${port}`;
   await eventually(async () => {
     try {
-      return (await fetch(`${base}/api/state`)).ok;
+      return (await fetch(`${base}/`)).ok;
     } catch {
       return false;
     }
   });
-  const state = () => fetch(`${base}/api/state`).then((r) => r.json());
-  const { token } = await fetch(`${base}/api/session`).then((r) => r.json());
+  const key = await readFile(
+    config.replace(/\.toml$/, ".procshelf.key"),
+    "utf8",
+  );
+  const login = await fetch(`${base}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Procshelf-Login": "1" },
+    body: JSON.stringify({ access_key: key }),
+  });
+  assert.equal(login.status, 204);
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  const request = (path, options = {}) =>
+    fetch(`${base}${path}`, {
+      ...options,
+      headers: { ...options.headers, Cookie: cookie },
+    });
+  const state = () => request("/api/state").then((r) => r.json());
+  const { token } = await request("/api/session").then((r) => r.json());
   async function act(action, snapshot) {
     const s = snapshot ?? (await state());
-    return fetch(`${base}/api/processes/api/actions`, {
+    return request("/api/processes/api/actions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -82,7 +105,7 @@ async function fixture(t, body) {
       }),
     });
   }
-  return { dir, config, text, child, launch, base, state, act };
+  return { dir, config, text, child, launch, base, state, act, request };
 }
 const command = `[processes.api]\nprogram="/bin/sh"\nargs=["-c", "echo ready; sleep 60"]\nstop_timeout_seconds=1\n`;
 
@@ -139,7 +162,7 @@ test(
     );
     await eventually(async () =>
       (
-        await fetch(`${f.base}/api/processes/api/logs`).then((r) => r.json())
+        await f.request("/api/processes/api/logs").then((r) => r.json())
       ).entries.some((e) => e.text.includes("ready")),
     );
     const pid = (await f.state()).processes[0].pid;
@@ -173,7 +196,7 @@ test(
       `[processes.api]\nprogram="/bin/sh"\nargs=["-c", "yes output"]\nautostart=true\nstop_timeout_seconds=0\n`,
     );
     const logs = () =>
-      fetch(`${f.base}/api/processes/api/logs`).then((r) => r.json());
+      f.request("/api/processes/api/logs").then((r) => r.json());
     await eventually(async () => (await logs()).discarded > 0);
     const snapshot = await logs();
     assert.ok(

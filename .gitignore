@@ -4,3 +4,5 @@
 /.guix-shell/
 /config.toml
 *.log
+
+*.procshelf.key
