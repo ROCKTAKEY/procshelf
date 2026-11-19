@@ -79,7 +79,11 @@ async function fixture(t, body, origin) {
   const browserHeaders = origin ? { Origin: origin } : {};
   const login = await fetch(`${base}/api/login`, {
     method: "POST",
-    headers: { ...browserHeaders, "Content-Type": "application/json", "X-Procshelf-Login": "1" },
+    headers: {
+      ...browserHeaders,
+      "Content-Type": "application/json",
+      "X-Procshelf-Login": "1",
+    },
     body: JSON.stringify({ access_key: key }),
   });
   assert.equal(login.status, 204);
@@ -114,9 +118,13 @@ test("Serve public origin can start and stop a process through loopback", async 
   const origin = "https://example.com";
   const f = await fixture(t, `public_origin="${origin}"\n${command}`, origin);
   assert.equal((await f.act("start")).status, 202);
-  await eventually(async () => (await f.state()).processes[0].state === "running");
+  await eventually(
+    async () => (await f.state()).processes[0].state === "running",
+  );
   assert.equal((await f.act("stop")).status, 202);
-  await eventually(async () => (await f.state()).processes[0].state === "exited");
+  await eventually(
+    async () => (await f.state()).processes[0].state === "exited",
+  );
 });
 
 test(
