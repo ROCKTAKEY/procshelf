@@ -1,4 +1,5 @@
 use crate::authentication::{AuthenticatedSession, Authentication, LoginError};
+use crate::configuration::PublicOrigin;
 use crate::processes::manager::{Action, Manager};
 use axum::{
     Extension, Json, Router,
@@ -21,18 +22,26 @@ use tokio_stream::wrappers::WatchStream;
 #[derive(Clone)]
 struct AppState {
     manager: Manager,
+    public_origin: Option<PublicOrigin>,
     hosts: Vec<String>,
     token: String,
     auth: Authentication,
     port: u16,
 }
-pub fn router(manager: Manager, listen: SocketAddr, token: String, auth: Authentication) -> Router {
+pub fn router(
+    manager: Manager,
+    listen: SocketAddr,
+    public_origin: Option<PublicOrigin>,
+    token: String,
+    auth: Authentication,
+) -> Router {
     let mut hosts = vec![listen.to_string()];
     if listen.ip().is_loopback() {
         hosts.push(format!("localhost:{}", listen.port()));
     }
     let state = AppState {
         manager,
+        public_origin,
         hosts,
         token,
         auth,
@@ -93,10 +102,14 @@ async fn protect(
         .get("host")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
-    let allowed_host = state.hosts.iter().any(|h| h == host);
-    let allowed_origin = headers
-        .get("origin")
-        .is_none_or(|v| v.to_str().is_ok_and(|s| s == format!("http://{host}")));
+    let local_host = state.hosts.iter().any(|h| h == host);
+    let public = state.public_origin.as_ref();
+    let allowed_host = local_host || public.is_some_and(|p| p.authority == host);
+    let mut origins = headers.get_all("origin").iter();
+    let allowed_origin = origins.next().is_none_or(|origin| {
+        (local_host && origin == format!("http://{host}").as_str())
+            || public.is_some_and(|p| origin == p.origin.as_str())
+    }) && origins.next().is_none();
     let same_site = headers
         .get("sec-fetch-site")
         .is_none_or(|v| v != "cross-site");

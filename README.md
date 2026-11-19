@@ -86,7 +86,17 @@ APP_ENV = "development"
 listen = "100.64.0.4:8787"
 ```
 
-デフォルトは localhost 限定。全インターフェースを表す `0.0.0.0` / `::` とポート 0 は受け付けず、bind 失敗時に別アドレスへ切り替えない。VPN 経由でもアクセスキーによるログインが必要。Host・Origin・セッショントークンを検査するため、設定した IP（loopback 時は localhost も可）を直接利用する。リバースプロキシや独自ホスト名は初期版の対象外。
+デフォルトは localhost 限定。全インターフェースを表す `0.0.0.0` / `::` とポート 0 は受け付けず、bind 失敗時に別アドレスへ切り替えない。VPN 経由でもアクセスキーによるログインが必要。直接アクセスには設定した IP（loopback 時は localhost も可）を利用する。
+
+Tailscale Serve の転送先を `http://127.0.0.1:8787` にした場合は、次の例のホスト名を実際の公開 HTTPS URL のホスト名に置き換え、procshelf を再起動する。標準以外の HTTPS ポートはホスト名の後に含める。パスや末尾のスラッシュは省く。
+
+```toml
+[web]
+listen = "127.0.0.1:8787"
+public_origin = "https://node.example.ts.net"
+```
+
+公開 Origin の許可はこの設定で決まる。Serve が Host を転送先に書き換える場合にも対応し、Forwarded や X-Forwarded-* は判定に使用しない。
 
 ## 認証
 

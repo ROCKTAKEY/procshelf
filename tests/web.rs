@@ -6,11 +6,20 @@ use procshelf::{configuration::Config, processes::manager::Manager, web::router}
 use std::path::Path;
 use tower::ServiceExt;
 fn app() -> axum::Router {
-    let config = Config::parse("[processes.api]\nprogram='/bin/sh'", Path::new("/tmp")).unwrap();
+    configured_app("")
+}
+fn configured_app(web: &str) -> axum::Router {
+    let config = Config::parse(
+        &format!("{web}[processes.api]\nprogram='/bin/sh'"),
+        Path::new("/tmp"),
+    )
+    .unwrap();
     let listen = config.listen;
+    let public_origin = config.public_origin.clone();
     router(
         Manager::new(config, env!("CARGO_BIN_EXE_procshelf").into()),
         listen,
+        public_origin,
         "unit-test-token".into(),
         procshelf::authentication::Authentication::new(
             procshelf::authentication::AccessKey::parse(&"a".repeat(64)).unwrap(),
@@ -130,13 +139,17 @@ async fn unauthenticated_clients_cannot_read_process_data_or_obtain_operation_to
 }
 
 async fn login(app: &axum::Router) -> String {
+    login_at(app, "localhost:8787", "http://localhost:8787").await
+}
+async fn login_at(app: &axum::Router, host: &str, origin: &str) -> String {
     let response = app
         .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/api/login")
-                .header("Host", "localhost:8787")
+                .header("Host", host)
+                .header("Origin", origin)
                 .header("X-Procshelf-Login", "1")
                 .header("Content-Type", "application/json")
                 .body(Body::from(
@@ -319,4 +332,43 @@ async fn login_requires_its_request_header_and_limits_attempts() {
         app.oneshot(request(true)).await.unwrap().status(),
         StatusCode::TOO_MANY_REQUESTS
     );
+}
+
+#[tokio::test]
+async fn serve_login_and_process_action() {
+    let origin = "https://node.example.ts.net";
+
+    for host in ["node.example.ts.net", "127.0.0.1:8787"] {
+        let app = configured_app(&format!("[web]\npublic_origin='{origin}'\n"));
+        let cookie = login_at(&app, host, origin).await;
+        for (sent_origin, token, expected) in [
+            (origin, "", StatusCode::FORBIDDEN),
+            (
+                "https://other.ts.net",
+                "unit-test-token",
+                StatusCode::FORBIDDEN,
+            ),
+            (origin, "unit-test-token", StatusCode::ACCEPTED),
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::post("/api/processes/api/actions")
+                        .header("Host", host)
+                        .header("Origin", sent_origin)
+                        .header("X-Forwarded-Host", "node.example.ts.net")
+                        .header("X-Forwarded-Proto", "https")
+                        .header("Cookie", &cookie)
+                        .header("X-Procshelf-Token", token)
+                        .header("Content-Type", "application/json")
+                        .body(Body::from(
+                            r#"{"action":"start","expected_run_id":null,"config_generation":1}"#,
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected);
+        }
+    }
 }

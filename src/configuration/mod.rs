@@ -49,7 +49,57 @@ impl ProcessSpec {
     }
 }
 #[derive(Debug, Clone)]
+pub struct PublicOrigin {
+    pub(crate) authority: String,
+    pub(crate) origin: String,
+}
+
+impl PublicOrigin {
+    fn parse(value: &str) -> Result<Self, String> {
+        let invalid = || {
+            "web.public_origin must be an HTTPS origin with a DNS hostname and optional port"
+                .to_string()
+        };
+        let authority = value.strip_prefix("https://").ok_or_else(invalid)?;
+        let (host, port) = match authority.split_once(':') {
+            Some((host, port)) => {
+                let port = port
+                    .parse::<u16>()
+                    .ok()
+                    .filter(|p| *p != 0)
+                    .ok_or_else(invalid)?;
+                (host, port)
+            }
+            None => (authority, 443),
+        };
+        if host.len() > 253
+            || !host.split('.').all(|label| {
+                !label.is_empty()
+                    && label.len() <= 63
+                    && !label.starts_with('-')
+                    && !label.ends_with('-')
+                    && label
+                        .bytes()
+                        .all(|c| c.is_ascii_alphanumeric() || c == b'-')
+            })
+        {
+            return Err(invalid());
+        }
+        let host = host.to_ascii_lowercase();
+        let authority = if port == 443 {
+            host
+        } else {
+            format!("{host}:{port}")
+        };
+        Ok(Self {
+            origin: format!("https://{authority}"),
+            authority,
+        })
+    }
+}
+#[derive(Debug, Clone)]
 pub struct Config {
+    pub public_origin: Option<PublicOrigin>,
     pub listen: SocketAddr,
     pub processes: BTreeMap<String, ProcessSpec>,
 }
@@ -64,11 +114,13 @@ struct RawConfig {
 #[derive(Deserialize)]
 #[serde(default, deny_unknown_fields)]
 struct Web {
+    public_origin: Option<String>,
     listen: SocketAddr,
 }
 impl Default for Web {
     fn default() -> Self {
         Self {
+            public_origin: None,
             listen: SocketAddr::from(([127, 0, 0, 1], 8787)),
         }
     }
@@ -178,6 +230,12 @@ impl Config {
             processes.insert(id.clone(), p.resolve(&id, base)?);
         }
         Ok(Self {
+            public_origin: raw
+                .web
+                .public_origin
+                .as_deref()
+                .map(PublicOrigin::parse)
+                .transpose()?,
             listen: raw.web.listen,
             processes,
         })

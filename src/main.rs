@@ -58,6 +58,7 @@ async fn run() -> Result<(), String> {
         .await
         .map_err(|e| format!("cannot bind {}: {e}", config.listen))?;
     let listen = config.listen;
+    let public_origin = config.public_origin.clone();
     let key_path = path.with_extension("procshelf.key");
     let auth = Authentication::new(AccessKey::load_or_create(&key_path)?);
     let token = random_token()?;
@@ -75,7 +76,7 @@ async fn run() -> Result<(), String> {
             return Err(error);
         }
     };
-    let app = procshelf::web::router(manager.clone(), listen, token, auth);
+    let app = procshelf::web::router(manager.clone(), listen, public_origin, token, auth);
     eprintln!("Access key file: {}", key_path.display());
     eprintln!("Procshelf listening on http://{listen}");
     let shutdown_manager = manager.clone();
