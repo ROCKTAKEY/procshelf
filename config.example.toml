@@ -1,6 +1,6 @@
 [web]
 listen = "127.0.0.1:8787"
-# public_origin = "https://node.example.ts.net"
+# public_origin = "https://example.com"
 
 [processes.clock]
 name = "Clock"

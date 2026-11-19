@@ -79,6 +79,8 @@ APP_ENV = "development"
 
 ## スマホから利用
 
+### VPN の IP アドレスで直接開く
+
 `listen` に VPN インターフェースの具体的な IP を設定して管理サービスを再起動し、スマホからその IP とポートで開く。
 
 ```toml
@@ -88,15 +90,17 @@ listen = "100.64.0.4:8787"
 
 デフォルトは localhost 限定。全インターフェースを表す `0.0.0.0` / `::` とポート 0 は受け付けず、bind 失敗時に別アドレスへ切り替えない。VPN 経由でもアクセスキーによるログインが必要。直接アクセスには設定した IP（loopback 時は localhost も可）を利用する。
 
-Tailscale Serve の転送先を `http://127.0.0.1:8787` にした場合は、次の例のホスト名を実際の公開 HTTPS URL のホスト名に置き換え、procshelf を再起動する。標準以外の HTTPS ポートはホスト名の後に含める。パスや末尾のスラッシュは省く。
+### Tailscale Serve の HTTPS URL で開く
+
+Serve 経由では、ブラウザーは HTTPS で管理画面を開き、Serve はその要求をローカルの procshelf に HTTP で転送する。`listen` には転送先のアドレスを、`public_origin` にはブラウザーから見た管理画面のオリジン（スキーム・ホスト名・ポート）を指定する。localhost で直接利用するだけなら `public_origin` は省略できる。
 
 ```toml
 [web]
 listen = "127.0.0.1:8787"
-public_origin = "https://node.example.ts.net"
+public_origin = "https://example.com"
 ```
 
-公開 Origin の許可はこの設定で決まる。Serve が Host を転送先に書き換える場合にも対応し、Forwarded や X-Forwarded-* は判定に使用しない。
+Serve の転送先を `http://127.0.0.1:8787` に設定し、例の `https://example.com` を実際の Serve の HTTPS オリジンに置き換える。443 以外のポートはホスト名の後に含め、パスと末尾のスラッシュは省く。設定を保存して procshelf を再起動したら、Serve の URL を開いてアクセスキーでログインする。
 
 ## 認証
 

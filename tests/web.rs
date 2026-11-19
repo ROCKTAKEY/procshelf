@@ -336,15 +336,15 @@ async fn login_requires_its_request_header_and_limits_attempts() {
 
 #[tokio::test]
 async fn serve_login_and_process_action() {
-    let origin = "https://node.example.ts.net";
+    let origin = "https://example.com";
 
-    for host in ["node.example.ts.net", "127.0.0.1:8787"] {
+    for host in ["example.com", "127.0.0.1:8787"] {
         let app = configured_app(&format!("[web]\npublic_origin='{origin}'\n"));
         let cookie = login_at(&app, host, origin).await;
         for (sent_origin, token, expected) in [
             (origin, "", StatusCode::FORBIDDEN),
             (
-                "https://other.ts.net",
+                "https://other.example.com",
                 "unit-test-token",
                 StatusCode::FORBIDDEN,
             ),
@@ -356,7 +356,7 @@ async fn serve_login_and_process_action() {
                     Request::post("/api/processes/api/actions")
                         .header("Host", host)
                         .header("Origin", sent_origin)
-                        .header("X-Forwarded-Host", "other.ts.net")
+                        .header("X-Forwarded-Host", "other.example.com")
                         .header("X-Forwarded-Proto", "https")
                         .header("Cookie", &cookie)
                         .header("X-Procshelf-Token", token)
@@ -376,11 +376,11 @@ async fn serve_login_and_process_action() {
 #[test]
 fn public_origin_requires_an_exact_https_authority() {
     for invalid in [
-        "http://node.ts.net",
-        "https://*.ts.net",
-        "https://user@node.ts.net",
-        "https://node.ts.net/path",
-        "https://node.ts.net:65536",
+        "http://example.com",
+        "https://*.example.com",
+        "https://user@example.com",
+        "https://example.com/path",
+        "https://example.com:65536",
     ] {
         assert!(
             Config::parse(

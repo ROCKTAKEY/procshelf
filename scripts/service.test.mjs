@@ -111,7 +111,7 @@ async function fixture(t, body, origin) {
 const command = `[processes.api]\nprogram="/bin/sh"\nargs=["-c", "echo ready; sleep 60"]\nstop_timeout_seconds=1\n`;
 
 test("Serve public origin can start and stop a process through loopback", async (t) => {
-  const origin = "https://node.example.ts.net";
+  const origin = "https://example.com";
   const f = await fixture(t, `public_origin="${origin}"\n${command}`, origin);
   assert.equal((await f.act("start")).status, 202);
   await eventually(async () => (await f.state()).processes[0].state === "running");
