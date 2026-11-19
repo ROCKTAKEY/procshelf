@@ -92,24 +92,29 @@ fn asset(content_type: &'static str, bytes: &'static [u8]) -> Response {
 fn error(status: StatusCode, message: &str) -> Response {
     (status, Json(json!({"error":message}))).into_response()
 }
+impl AppState {
+    fn allows_origin(&self, headers: &axum::http::HeaderMap) -> bool {
+        let host = headers
+            .get("host")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let local_host = self.hosts.iter().any(|h| h == host);
+        let public = self.public_origin.as_ref();
+        let allowed_host = local_host || public.is_some_and(|p| p.authority == host);
+        let mut origins = headers.get_all("origin").iter();
+        let allowed_origin = origins.next().is_none_or(|origin| {
+            (local_host && origin == format!("http://{host}").as_str())
+                || public.is_some_and(|p| origin == p.origin.as_str())
+        }) && origins.next().is_none();
+        allowed_host && allowed_origin
+    }
+}
 async fn protect(
     State(state): State<AppState>,
     mut request: Request<Body>,
     next: Next,
 ) -> Response {
     let headers = request.headers();
-    let host = headers
-        .get("host")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-    let local_host = state.hosts.iter().any(|h| h == host);
-    let public = state.public_origin.as_ref();
-    let allowed_host = local_host || public.is_some_and(|p| p.authority == host);
-    let mut origins = headers.get_all("origin").iter();
-    let allowed_origin = origins.next().is_none_or(|origin| {
-        (local_host && origin == format!("http://{host}").as_str())
-            || public.is_some_and(|p| origin == p.origin.as_str())
-    }) && origins.next().is_none();
     let same_site = headers
         .get("sec-fetch-site")
         .is_none_or(|v| v != "cross-site");
@@ -134,7 +139,7 @@ async fn protect(
                 .get("x-procshelf-token")
                 .is_some_and(|v| v.as_bytes() == state.token.as_bytes())
     };
-    let mut response = if !allowed_host || !allowed_origin || !same_site {
+    let mut response = if !state.allows_origin(headers) || !same_site {
         error(
             StatusCode::FORBIDDEN,
             "request origin or session token rejected",

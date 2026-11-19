@@ -348,7 +348,7 @@ async fn serve_login_and_process_action() {
                 "unit-test-token",
                 StatusCode::FORBIDDEN,
             ),
-            (origin, "unit-test-token", StatusCode::ACCEPTED),
+            (origin, "unit-test-token", StatusCode::CONFLICT),
         ] {
             let response = app
                 .clone()
@@ -356,13 +356,13 @@ async fn serve_login_and_process_action() {
                     Request::post("/api/processes/api/actions")
                         .header("Host", host)
                         .header("Origin", sent_origin)
-                        .header("X-Forwarded-Host", "node.example.ts.net")
+                        .header("X-Forwarded-Host", "other.ts.net")
                         .header("X-Forwarded-Proto", "https")
                         .header("Cookie", &cookie)
                         .header("X-Procshelf-Token", token)
                         .header("Content-Type", "application/json")
                         .body(Body::from(
-                            r#"{"action":"start","expected_run_id":null,"config_generation":1}"#,
+                            r#"{"action":"start","expected_run_id":null,"config_generation":0}"#,
                         ))
                         .unwrap(),
                 )
@@ -370,5 +370,25 @@ async fn serve_login_and_process_action() {
                 .unwrap();
             assert_eq!(response.status(), expected);
         }
+    }
+}
+
+#[test]
+fn public_origin_requires_an_exact_https_authority() {
+    for invalid in [
+        "http://node.ts.net",
+        "https://*.ts.net",
+        "https://user@node.ts.net",
+        "https://node.ts.net/path",
+        "https://node.ts.net:65536",
+    ] {
+        assert!(
+            Config::parse(
+                &format!("[web]\npublic_origin='{invalid}'"),
+                Path::new("/tmp")
+            )
+            .is_err(),
+            "{invalid}"
+        );
     }
 }

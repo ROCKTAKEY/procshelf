@@ -29,7 +29,7 @@ async function unusedPort() {
   await new Promise((resolve) => server.close(resolve));
   return port;
 }
-async function fixture(t, body) {
+async function fixture(t, body, origin) {
   const dir = await mkdtemp(join(tmpdir(), "procshelf-test-"));
   const port = await unusedPort();
   const config = join(dir, "config.toml");
@@ -76,9 +76,10 @@ async function fixture(t, body) {
     config.replace(/\.toml$/, ".procshelf.key"),
     "utf8",
   );
+  const browserHeaders = origin ? { Origin: origin } : {};
   const login = await fetch(`${base}/api/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Procshelf-Login": "1" },
+    headers: { ...browserHeaders, "Content-Type": "application/json", "X-Procshelf-Login": "1" },
     body: JSON.stringify({ access_key: key }),
   });
   assert.equal(login.status, 204);
@@ -86,7 +87,7 @@ async function fixture(t, body) {
   const request = (path, options = {}) =>
     fetch(`${base}${path}`, {
       ...options,
-      headers: { ...options.headers, Cookie: cookie },
+      headers: { ...browserHeaders, ...options.headers, Cookie: cookie },
     });
   const state = () => request("/api/state").then((r) => r.json());
   const { token } = await request("/api/session").then((r) => r.json());
@@ -108,6 +109,15 @@ async function fixture(t, body) {
   return { dir, config, text, child, launch, base, state, act, request };
 }
 const command = `[processes.api]\nprogram="/bin/sh"\nargs=["-c", "echo ready; sleep 60"]\nstop_timeout_seconds=1\n`;
+
+test("Serve public origin can start and stop a process through loopback", async (t) => {
+  const origin = "https://node.example.ts.net";
+  const f = await fixture(t, `public_origin="${origin}"\n${command}`, origin);
+  assert.equal((await f.act("start")).status, 202);
+  await eventually(async () => (await f.state()).processes[0].state === "running");
+  assert.equal((await f.act("stop")).status, 202);
+  await eventually(async () => (await f.state()).processes[0].state === "exited");
+});
 
 test(
   "HTTP controls, live configuration, and single-owner lock work together",
