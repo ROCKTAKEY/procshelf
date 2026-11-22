@@ -1,3 +1,5 @@
+mod access;
+
 use crate::authentication::{AuthenticatedSession, Authentication, LoginError};
 use crate::configuration::PublicOrigin;
 use crate::processes::manager::{Action, Manager};
@@ -84,6 +86,13 @@ pub fn router(
         .route("/api/processes/{id}/actions", post(action))
         .layer(DefaultBodyLimit::max(8192))
         .layer(middleware::from_fn_with_state(state.clone(), protect))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(access::request_span)
+                .on_request(())
+                .on_response(access::response)
+                .on_failure(()),
+        )
         .with_state(state)
 }
 fn asset(content_type: &'static str, bytes: &'static [u8]) -> Response {
@@ -93,7 +102,7 @@ fn error(status: StatusCode, message: &str) -> Response {
     (status, Json(json!({"error":message}))).into_response()
 }
 impl AppState {
-    fn allows_origin(&self, headers: &axum::http::HeaderMap) -> bool {
+    fn navigation_rejection(&self, headers: &axum::http::HeaderMap) -> Option<&'static str> {
         let host = headers
             .get("host")
             .and_then(|v| v.to_str().ok())
@@ -106,7 +115,18 @@ impl AppState {
             (local_host && origin == format!("http://{host}").as_str())
                 || public.is_some_and(|p| origin == p.origin.as_str())
         }) && origins.next().is_none();
-        allowed_host && allowed_origin
+        if !allowed_host {
+            Some("host")
+        } else if !allowed_origin {
+            Some("origin")
+        } else if headers
+            .get("sec-fetch-site")
+            .is_some_and(|v| v == "cross-site")
+        {
+            Some("cross-site")
+        } else {
+            None
+        }
     }
 }
 async fn protect(
@@ -115,9 +135,7 @@ async fn protect(
     next: Next,
 ) -> Response {
     let headers = request.headers();
-    let same_site = headers
-        .get("sec-fetch-site")
-        .is_none_or(|v| v != "cross-site");
+    let rejection = state.navigation_rejection(headers);
     let changes_state = !matches!(
         *request.method(),
         axum::http::Method::GET | axum::http::Method::HEAD
@@ -139,7 +157,8 @@ async fn protect(
                 .get("x-procshelf-token")
                 .is_some_and(|v| v.as_bytes() == state.token.as_bytes())
     };
-    let mut response = if !state.allows_origin(headers) || !same_site {
+    let mut response = if let Some(reason) = rejection {
+        access::record_rejection(reason, headers);
         error(
             StatusCode::FORBIDDEN,
             "request origin or session token rejected",

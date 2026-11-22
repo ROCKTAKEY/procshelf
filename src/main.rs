@@ -24,6 +24,12 @@ async fn main() {
     }
 }
 async fn run() -> Result<(), String> {
+    tracing_subscriber::fmt()
+        .json()
+        .flatten_event(true)
+        .with_span_list(false)
+        .with_writer(std::io::stderr)
+        .init();
     let mut args = std::env::args().skip(1);
     let path = match args.next().as_deref() {
         None => PathBuf::from("config.toml"),

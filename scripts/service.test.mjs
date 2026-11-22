@@ -227,3 +227,28 @@ test(
     );
   },
 );
+
+test("access log identifies rejected navigation without logging query parameters", async (t) => {
+  const f = await fixture(t, command);
+  const response = await f.request("/missing?private-query", {
+    headers: {
+      "Sec-Fetch-Site": "cross-site",
+      Authorization: "Bearer private-header",
+    },
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await f.request("/missing")).status, 404);
+  await eventually(() => f.child.diagnostics.includes('"status":404'));
+  const entries = f.child.diagnostics
+    .split("\n")
+    .filter((line) => line.startsWith("{"))
+    .map((line) => JSON.parse(line));
+  const rejected = entries.find((entry) => entry.status === 403);
+  assert.equal(rejected.span.reason, "cross-site");
+  assert.match(rejected.span["sec-fetch-site"], /cross-site/);
+  assert.equal(rejected.span.path, "/missing");
+  assert.equal(rejected.span.method, "GET");
+  assert.ok(Number.isFinite(Date.parse(rejected.timestamp)));
+  assert.ok(entries.some((entry) => entry.status === 200));
+  assert.doesNotMatch(f.child.diagnostics, /private-query|private-header/);
+});

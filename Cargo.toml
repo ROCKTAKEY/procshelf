@@ -6,6 +6,9 @@ edition = "2024"
 rust-version = "1.93"
 
 [dependencies]
+tower-http = { version = "0.6", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tokio = { version = "1", features = ["rt", "macros", "process", "io-util", "sync", "time", "net", "signal", "fs"] }
 serde = { version = "1", features = ["derive"] }
