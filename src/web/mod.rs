@@ -1,4 +1,4 @@
-mod access;
+mod access_log;
 
 use crate::authentication::{AuthenticatedSession, Authentication, LoginError};
 use crate::configuration::PublicOrigin;
@@ -95,9 +95,9 @@ pub fn router(
         .layer(middleware::map_response(security_headers))
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
-                .make_span_with(access::request_span)
+                .make_span_with(access_log::request_span)
                 .on_request(())
-                .on_response(access::response)
+                .on_response(access_log::response)
                 .on_failure(()),
         )
         .with_state(state)
@@ -120,7 +120,7 @@ async fn protect(
         .iter()
         .any(|allowed| Some(allowed.as_str()) == host)
     {
-        access::record_rejection("host", headers);
+        access_log::record_rejection("host", headers);
         return error(StatusCode::FORBIDDEN, "request host rejected");
     }
     let changes_state = !matches!(
