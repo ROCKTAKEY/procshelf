@@ -24,7 +24,6 @@ use tokio_stream::wrappers::WatchStream;
 #[derive(Clone)]
 struct AppState {
     manager: Manager,
-    public_origin: Option<PublicOrigin>,
     hosts: Vec<String>,
     token: String,
     auth: Authentication,
@@ -41,10 +40,16 @@ pub fn router(
     if listen.ip().is_loopback() {
         hosts.push(format!("localhost:{}", listen.port()));
     }
+    let mut csrf = tower_http::csrf::CsrfLayer::new();
+    if let Some(origin) = public_origin {
+        hosts.push(origin.authority);
+        csrf = csrf
+            .add_trusted_origin(&origin.origin)
+            .expect("PublicOrigin is a canonical HTTPS origin");
+    }
     let state = AppState {
-        manager,
-        public_origin,
         hosts,
+        manager,
         token,
         auth,
         port: listen.port(),
@@ -86,6 +91,8 @@ pub fn router(
         .route("/api/processes/{id}/actions", post(action))
         .layer(DefaultBodyLimit::max(8192))
         .layer(middleware::from_fn_with_state(state.clone(), protect))
+        .layer(csrf)
+        .layer(middleware::map_response(security_headers))
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
                 .make_span_with(access::request_span)
@@ -101,41 +108,21 @@ fn asset(content_type: &'static str, bytes: &'static [u8]) -> Response {
 fn error(status: StatusCode, message: &str) -> Response {
     (status, Json(json!({"error":message}))).into_response()
 }
-impl AppState {
-    fn navigation_rejection(&self, headers: &axum::http::HeaderMap) -> Option<&'static str> {
-        let host = headers
-            .get("host")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
-        let local_host = self.hosts.iter().any(|h| h == host);
-        let public = self.public_origin.as_ref();
-        let allowed_host = local_host || public.is_some_and(|p| p.authority == host);
-        let mut origins = headers.get_all("origin").iter();
-        let allowed_origin = origins.next().is_none_or(|origin| {
-            (local_host && origin == format!("http://{host}").as_str())
-                || public.is_some_and(|p| origin == p.origin.as_str())
-        }) && origins.next().is_none();
-        if !allowed_host {
-            Some("host")
-        } else if !allowed_origin {
-            Some("origin")
-        } else if headers
-            .get("sec-fetch-site")
-            .is_some_and(|v| v == "cross-site")
-        {
-            Some("cross-site")
-        } else {
-            None
-        }
-    }
-}
 async fn protect(
     State(state): State<AppState>,
     mut request: Request<Body>,
     next: Next,
 ) -> Response {
     let headers = request.headers();
-    let rejection = state.navigation_rejection(headers);
+    let host = headers.get("host").and_then(|value| value.to_str().ok());
+    if !state
+        .hosts
+        .iter()
+        .any(|allowed| Some(allowed.as_str()) == host)
+    {
+        access::record_rejection("host", headers);
+        return error(StatusCode::FORBIDDEN, "request host rejected");
+    }
     let changes_state = !matches!(
         *request.method(),
         axum::http::Method::GET | axum::http::Method::HEAD
@@ -157,13 +144,7 @@ async fn protect(
                 .get("x-procshelf-token")
                 .is_some_and(|v| v.as_bytes() == state.token.as_bytes())
     };
-    let mut response = if let Some(reason) = rejection {
-        access::record_rejection(reason, headers);
-        error(
-            StatusCode::FORBIDDEN,
-            "request origin or session token rejected",
-        )
-    } else if request.uri().path().starts_with("/api/") && !is_login && authenticated.is_none() {
+    if request.uri().path().starts_with("/api/") && !is_login && authenticated.is_none() {
         error(StatusCode::UNAUTHORIZED, "authentication required")
     } else if !csrf_ok {
         error(StatusCode::FORBIDDEN, "request token rejected")
@@ -172,7 +153,9 @@ async fn protect(
             request.extensions_mut().insert(session);
         }
         next.run(request).await
-    };
+    }
+}
+async fn security_headers(mut response: Response) -> Response {
     let headers = response.headers_mut();
     headers.insert(
         "x-content-type-options",

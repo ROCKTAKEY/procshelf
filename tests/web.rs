@@ -392,3 +392,50 @@ fn public_origin_requires_an_exact_https_authority() {
         );
     }
 }
+
+#[tokio::test]
+async fn cross_site_get_requires_an_allowed_host_and_does_not_grant_cors_access() {
+    for (host, expected) in [
+        ("localhost:8787", StatusCode::OK),
+        ("other.example", StatusCode::FORBIDDEN),
+    ] {
+        let response = app()
+            .oneshot(
+                Request::get("/")
+                    .header("Host", host)
+                    .header("Origin", "https://external.example")
+                    .header("Sec-Fetch-Site", "cross-site")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+        assert!(
+            !response
+                .headers()
+                .contains_key("access-control-allow-origin")
+        );
+    }
+}
+
+#[tokio::test]
+async fn login_rejects_a_same_site_post_without_a_trusted_origin() {
+    let response = app()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/login")
+                .header("Host", "localhost:8787")
+                .header("Sec-Fetch-Site", "same-site")
+                .header("X-Procshelf-Login", "1")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({"access_key":"a".repeat(64)}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}

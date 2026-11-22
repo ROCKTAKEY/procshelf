@@ -27,6 +27,12 @@ pub(super) fn record_rejection(reason: &str, headers: &HeaderMap) {
     }
 }
 
-pub(super) fn response(response: &Response, _latency: Duration, _span: &Span) {
+pub(super) fn response(response: &Response, _latency: Duration, span: &Span) {
+    if let Some(reason) = response
+        .extensions()
+        .get::<tower_http::csrf::ProtectionError>()
+    {
+        span.record("reason", field::display(reason));
+    }
     tracing::info!(status = response.status().as_u16(), "HTTP response");
 }
