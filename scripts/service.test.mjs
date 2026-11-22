@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
+import { get } from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
 
 async function eventually(fn, ms = 5000) {
@@ -227,3 +228,38 @@ test(
     );
   },
 );
+
+test("access log identifies rejected navigation without logging query parameters", async (t) => {
+  const f = await fixture(t, command);
+  const status = await new Promise((resolve, reject) => {
+    get(
+      `${f.base}/missing?private-query`,
+      {
+        headers: {
+          Host: "other.example",
+          "Sec-Fetch-Site": "cross-site",
+          Authorization: "Bearer private-header",
+        },
+      },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode);
+      },
+    ).on("error", reject);
+  });
+  assert.equal(status, 403);
+  assert.equal((await f.request("/missing")).status, 404);
+  await eventually(() => f.child.diagnostics.includes('"status":404'));
+  const entries = f.child.diagnostics
+    .split("\n")
+    .filter((line) => line.startsWith("{"))
+    .map((line) => JSON.parse(line));
+  const rejected = entries.find((entry) => entry.status === 403);
+  assert.equal(rejected.span.reason, "host");
+  assert.match(rejected.span["sec-fetch-site"], /cross-site/);
+  assert.equal(rejected.span.path, "/missing");
+  assert.equal(rejected.span.method, "GET");
+  assert.ok(Number.isFinite(Date.parse(rejected.timestamp)));
+  assert.ok(entries.some((entry) => entry.status === 200));
+  assert.doesNotMatch(f.child.diagnostics, /private-query|private-header/);
+});
