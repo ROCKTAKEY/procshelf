@@ -6,7 +6,7 @@ workflows:
     '.github/workflows/ci.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'
-        - 'songmu/tagpr@v1.21.4'
+        - 'songmu/tagpr@v1.22.0'
     '.github/workflows/release.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'
@@ -21,8 +21,8 @@ dependencies:
         commit: 'sha1-949feb2413d6458794dcd2491c4babbbce0c15c1'
         owner_id: 44036562
         repo_id: 189476904
-    'songmu/tagpr@v1.21.4':
-        ref: 'v1.21.4'
-        commit: 'sha1-e1250d6c84e4425db82b5e90549d62dfe23e9ebe'
+    'songmu/tagpr@v1.22.0':
+        ref: 'v1.22.0'
+        commit: 'sha1-047aec4b6c0ce166f52958b5a97f5a3d927fd65b'
         owner_id: 177122
         repo_id: 524603982
